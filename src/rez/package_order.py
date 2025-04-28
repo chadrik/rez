@@ -180,11 +180,11 @@ class PackageOrder(object):
         """
         raise NotImplementedError
 
-    def to_pod(self):
+    def to_pod(self) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
-    def from_pod(cls, data) -> PackageOrder:
+    def from_pod(cls, data: dict[str, Any]) -> PackageOrder:
         raise NotImplementedError
 
     @property
@@ -224,7 +224,7 @@ class NullPackageOrder(PackageOrder):
     def __eq__(self, other):
         return type(self) == type(other)  # noqa: E721
 
-    def to_pod(self) -> dict:
+    def to_pod(self) -> dict[str, Any]:
         """
         Example (in yaml):
 
@@ -238,7 +238,7 @@ class NullPackageOrder(PackageOrder):
         }
 
     @classmethod
-    def from_pod(cls, data) -> Self:
+    def from_pod(cls, data: dict[str, Any]) -> Self:
         return cls(packages=data.get("packages"))
 
 
@@ -273,7 +273,7 @@ class SortedOrder(PackageOrder):
             and self.descending == other.descending
         )
 
-    def to_pod(self) -> dict:
+    def to_pod(self) -> dict[str, Any]:
         """
         Example (in yaml):
 
@@ -289,7 +289,7 @@ class SortedOrder(PackageOrder):
         }
 
     @classmethod
-    def from_pod(cls, data) -> Self:
+    def from_pod(cls, data: dict[str, Any]) -> Self:
         return cls(
             data["descending"],
             packages=data.get("packages"),
@@ -353,7 +353,7 @@ class PerFamilyOrder(PackageOrder):
             and self.default_order == other.default_order
         )
 
-    def to_pod(self) -> dict:
+    def to_pod(self) -> dict[str, Any]:
         """
         Example (in yaml):
 
@@ -395,7 +395,7 @@ class PerFamilyOrder(PackageOrder):
         return result
 
     @classmethod
-    def from_pod(cls, data) -> Self:
+    def from_pod(cls, data: dict[str, Any]) -> Self:
         order_dict = {}
         default_order = None
 
@@ -444,7 +444,7 @@ class VersionSplitPackageOrder(PackageOrder):
             and self.first_version == other.first_version
         )
 
-    def to_pod(self) -> dict:
+    def to_pod(self) -> dict[str, Any]:
         """
         Example (in yaml):
 
@@ -460,7 +460,7 @@ class VersionSplitPackageOrder(PackageOrder):
         )
 
     @classmethod
-    def from_pod(cls, data) -> Self:
+    def from_pod(cls, data: dict[str, Any]) -> Self:
         return cls(
             Version(data["first_version"]),
             packages=data.get("packages"),
@@ -608,7 +608,7 @@ class TimestampPackageOrder(PackageOrder):
             and self.rank == other.rank
         )
 
-    def to_pod(self) -> dict:
+    def to_pod(self) -> dict[str, Any]:
         """
         Example (in yaml):
 
@@ -626,7 +626,7 @@ class TimestampPackageOrder(PackageOrder):
         )
 
     @classmethod
-    def from_pod(cls, data) -> Self:
+    def from_pod(cls, data: dict[str, Any]) -> Self:
         return cls(
             data["timestamp"],
             rank=data.get("rank", 0),
@@ -643,11 +643,11 @@ class PackageOrderList(List[PackageOrder]):
         self.by_package: dict[str, PackageOrder] = {}
         self.dirty = True
 
-    def to_pod(self) -> list:
+    def to_pod(self) -> list[dict[str, Any]]:
         return [to_pod(f) for f in self]
 
     @classmethod
-    def from_pod(cls, data) -> PackageOrderList:
+    def from_pod(cls, data: list[dict[str, Any]]) -> PackageOrderList:
         flist = PackageOrderList()
         for dict_ in data:
             f = from_pod(dict_)
@@ -723,7 +723,7 @@ def to_pod(orderer: PackageOrder) -> dict:
     return data
 
 
-def from_pod(data) -> PackageOrder:
+def from_pod(data: dict[str, Any]) -> PackageOrder:
     if isinstance(data, dict):
         cls_name = data["type"]
         data = data.copy()
@@ -738,7 +738,7 @@ def from_pod(data) -> PackageOrder:
         return cls.from_pod(data_)
 
 
-def get_orderer(package_name, orderers=None):
+def get_orderer(package_name: str, orderers: PackageOrderList | dict[str, PackageOrder] | None = None):
     if orderers is None:
         orderers = PackageOrderList.singleton
     orderer = orderers.get(package_name)

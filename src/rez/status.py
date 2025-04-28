@@ -9,7 +9,7 @@ import os
 import os.path
 from fnmatch import fnmatch
 from rez import __version__
-from rez.solver import SupportsWrite
+from rez.utils.typing import SupportsWrite
 from rez.utils.data_utils import cached_property
 from rez.resolved_context import ResolvedContext
 from rez.packages import iter_packages, Package

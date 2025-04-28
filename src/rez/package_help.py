@@ -13,6 +13,10 @@ from rez.utils.scope import scoped_formatter
 from rez.system import system
 import webbrowser
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rez.version import VersionRange
 
 
 class PackageHelp(object):
@@ -21,7 +25,8 @@ class PackageHelp(object):
     Given a package and version range, help will be extracted from the latest
     package in the version range that provides it.
     """
-    def __init__(self, package_name, version_range=None, paths=None, verbose: bool = False) -> None:
+    def __init__(self, package_name: str, version_range: VersionRange | None = None, paths=None,
+                 verbose: bool = False) -> None:
         """Create a PackageHelp object.
 
         Args:
@@ -80,12 +85,12 @@ class PackageHelp(object):
             self._sections = sections
 
     @property
-    def success(self):
+    def success(self) -> bool:
         """Return True if help was found, False otherwise."""
         return bool(self._sections)
 
     @property
-    def sections(self):
+    def sections(self) -> list[list[str]]:
         """Returns a list of (name, uri) 2-tuples."""
         return self._sections
 
@@ -114,7 +119,7 @@ class PackageHelp(object):
         cls._open_url(config.documentation_url)
 
     @classmethod
-    def _open_url(cls, url) -> None:
+    def _open_url(cls, url: str) -> None:
         if config.browser:
             cmd = [config.browser, url]
             if not config.quiet:

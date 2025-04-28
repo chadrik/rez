@@ -55,6 +55,6 @@ class Command(object):
         self.settings = self.type_settings.get(self.name())
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
         """Return the name of the Command and rez-subcommand."""
         raise NotImplementedError

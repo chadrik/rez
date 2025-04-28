@@ -221,7 +221,7 @@ def set_objects(objects):
         _set_objects.variables = {}
 
 
-def load_py(stream, filepath=None):
+def load_py(stream, filepath: str = None):
     """Load python-formatted data from a stream.
 
     Args:
@@ -234,7 +234,7 @@ def load_py(stream, filepath=None):
         return _load_py(stream, filepath=filepath)
 
 
-def _load_py(stream, filepath=None):
+def _load_py(stream, filepath: str = None):
     scopes = ScopeContext()
 
     g = dict(scope=scopes,
@@ -295,7 +295,7 @@ class EarlyThis(object):
         return value
 
 
-def process_python_objects(data, filepath=None):
+def process_python_objects(data: dict, filepath: str | None = None) -> dict:
     """Replace certain values in the given package data dict.
 
     Does things like:
@@ -399,7 +399,7 @@ def process_python_objects(data, filepath=None):
     return data
 
 
-def load_yaml(stream, **kwargs):
+def load_yaml(stream, filepath: str = None):
     """Load yaml-formatted data from a stream.
 
     Args:
@@ -428,7 +428,7 @@ def load_yaml(stream, **kwargs):
         raise e
 
 
-def load_txt(stream, **kwargs):
+def load_txt(stream, filepath: str = None):
     """Load text data from a stream.
 
     Args:

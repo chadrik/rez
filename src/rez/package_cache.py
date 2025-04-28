@@ -33,7 +33,7 @@ from rez.packages import get_variant, Variant
 from rez.system import system
 from rez.utils.filesystem import rename
 
-from typing import Iterable
+from typing import Iterable, Iterator
 
 
 class PackageCache(object):
@@ -134,7 +134,8 @@ class PackageCache(object):
 
         return rootpath
 
-    def add_variant(self, variant, force: bool = False, wait_for_copying: bool = False, logger=None):
+    def add_variant(self, variant: Variant, force: bool = False, wait_for_copying: bool = False,
+                    logger: logging.Logger | None = None) -> tuple[str, int]:
         """Copy a variant's payload into the cache.
 
         The following steps are taken to ensure muti-thread/proc safety, and to
@@ -339,7 +340,7 @@ class PackageCache(object):
 
         return (rootpath, self.VARIANT_CREATED)
 
-    def remove_variant(self, variant: Variant):
+    def remove_variant(self, variant: Variant) -> int:
         """Remove a variant from the cache.
 
         Since this removes the associated cached variant payload, there is no
@@ -405,7 +406,7 @@ class PackageCache(object):
 
         return self.VARIANT_REMOVED
 
-    def add_variants_async(self, variants):
+    def add_variants_async(self, variants: Iterable[Variant]) -> None:
         """Update the package cache by adding some or all of the given variants.
 
         This method is called when a context is created or sourced. Variants
@@ -498,7 +499,7 @@ class PackageCache(object):
             self._run_caching_operation(wait_for_copying=True)
 
     @staticmethod
-    def _subprocess_package_caching_daemon(path):
+    def _subprocess_package_caching_daemon(path: str) -> subprocess.Popen | None:
         """
         Run the package cache in a daemon process
 
@@ -544,6 +545,7 @@ class PackageCache(object):
                 "Failed to start package caching daemon (command: %s): %s",
                 ' '.join(args), e
             )
+            return None
 
     def get_variants(self) -> list[tuple[Variant, str, int]]:
         """Get variants and their current statuses from the cache.
@@ -669,7 +671,7 @@ class PackageCache(object):
             except Exception:
                 logger.exception("An error occurred while cleaning the cache")
 
-    def clean(self, time_limit=None) -> None:
+    def clean(self, time_limit: float | None = None) -> None:
         """Delete unused package cache files.
 
         This should be run periodically via 'rez-pkg-cache --clean'.
@@ -756,7 +758,7 @@ class PackageCache(object):
                 return
 
     @contextmanager
-    def _lock(self):
+    def _lock(self) -> Iterator[None]:
         lock_filepath = os.path.join(self._sys_dir, ".lock")
         lock = LockFile(lock_filepath)
 

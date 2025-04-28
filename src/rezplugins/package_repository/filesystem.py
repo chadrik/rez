@@ -38,7 +38,7 @@ from rez.config import config
 from rez.vendor.schema.schema import Schema, Optional, And, Use, Or
 from rez.version import Version, VersionRange
 
-from typing import Iterator, Iterable, TYPE_CHECKING
+from typing import Any, Iterator, Iterable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Self
@@ -318,7 +318,7 @@ class FileSystemCombinedPackageFamilyResource(PackageFamilyResource):
         except OSError:
             return 0
 
-    def iter_packages(self):
+    def iter_packages(self) -> Iterator[FileSystemCombinedPackageResource]:
         # unversioned package
         if config.allow_unversioned_packages and not self.versions:
             package = self._repository.get_resource(
@@ -902,8 +902,8 @@ class FileSystemPackageRepository(PackageRepository):
         family_path = os.path.join(self.location, variant_resource.name)
         self._delete_stale_build_tagfiles(family_path)
 
-    def install_variant(self, variant_resource: VariantResource, dry_run: bool = False,
-                        overrides=None) -> VariantResource:
+    def install_variant(self, variant_resource: VariantResource,
+                        dry_run: bool = False, overrides: dict[str, Any] | None = None) -> VariantResource:
         overrides = overrides or {}
 
         # Name and version overrides are a special case - they change the
@@ -954,7 +954,7 @@ class FileSystemPackageRepository(PackageRepository):
             return self._create_variant(
                 variant_resource,
                 dry_run=dry_run,
-                overrides=overrides
+                overrides=overrides or {}
             )
 
         if dry_run:
@@ -1211,7 +1211,9 @@ class FileSystemPackageRepository(PackageRepository):
         self._on_changed(name)
         return self.get_package_family(name)
 
-    def _create_variant(self, variant: VariantResource, dry_run: bool = False, overrides=None) -> VariantResource | None:
+    # FIXME: overrides should not default to None, it must be provided
+    def _create_variant(self, variant: VariantResource, dry_run: bool = False,
+                        overrides: dict[str, Any] = None) -> VariantResource | None:
         # special case overrides
         variant_name = overrides.get("name") or variant.name
         variant_version = overrides.get("version") or variant.version

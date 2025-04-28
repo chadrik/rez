@@ -10,14 +10,20 @@ from rez.utils.logging_ import print_debug
 from rez.util import load_module_from_file
 from inspect import getsourcelines
 from textwrap import dedent
-from types import CodeType, FunctionType, MethodType, ModuleType
-from typing import Callable
+from types import CodeType, ModuleType
+from typing import Callable, Generic, TypeVar, TYPE_CHECKING
 from glob import glob
 import traceback
 import os.path
 
+if TYPE_CHECKING:
+    from rez.packages import PackageBaseResourceWrapper
 
-def early():
+T = TypeVar("T")
+CallabeT = TypeVar("CallabeT", bound=Callable)
+
+
+def early() -> Callable[[CallabeT], CallabeT]:
     """Used by functions in package.py to harden to the return value at build time.
 
     The term 'early' refers to the fact these package attribute are evaluated
@@ -30,7 +36,7 @@ def early():
     return decorated
 
 
-def late():
+def late() -> Callable[[CallabeT], CallabeT]:
     """Used by functions in package.py that are evaluated lazily.
 
     The term 'late' refers to the fact these package attributes are evaluated
@@ -57,7 +63,7 @@ def late():
     return decorated
 
 
-def include(module_name, *module_names):
+def include(module_name: str, *module_names: str) -> Callable[[CallabeT], CallabeT]:
     """Used by functions in package.py to have access to named modules.
 
     See the 'package_definition_python_path' config setting for more info.
@@ -78,7 +84,7 @@ def _add_decorator(fn, name, **kwargs) -> None:
 
 
 class SourceCodeError(Exception):
-    def __init__(self, msg, short_msg) -> None:
+    def __init__(self, msg: str, short_msg: str) -> None:
         super(SourceCodeError, self).__init__(msg)
         self.short_msg = short_msg
 
@@ -91,19 +97,19 @@ class SourceCodeExecError(SourceCodeError):
     pass
 
 
-class SourceCode(object):
+class SourceCode(Generic[T]):
     """Wrapper for python source code.
 
     This object is aware of the decorators defined in this sourcefile (such as
     'include') and deals with them appropriately.
     """
-    def __init__(self, source: str | None = None, func: Callable | None = None,
+    def __init__(self, source: str | None = None, func: Callable[[], T] | None = None,
                  filepath: str | None = None, eval_as_function: bool = True) -> None:
         self.source = (source or '').rstrip()
         self.func = func
         self.filepath = filepath
         self.eval_as_function = eval_as_function
-        self.package = None
+        self.package: PackageBaseResourceWrapper | None = None
 
         self.funcname: str | None = None
         self.decorators: list[dict] = []
@@ -111,7 +117,7 @@ class SourceCode(object):
         if self.func is not None:
             self._init_from_func()
 
-    def copy(self) -> SourceCode:
+    def copy(self) -> SourceCode[T]:
         other = SourceCode.__new__(SourceCode)
         other.source = self.source
         other.func = self.func
@@ -208,11 +214,11 @@ class SourceCode(object):
 
         return pyc
 
-    def set_package(self, package) -> None:
+    def set_package(self, package: PackageBaseResourceWrapper) -> None:
         # this is needed to load @included modules
         self.package = package
 
-    def exec_(self, globals_={}):
+    def exec_(self, globals_={}) -> T:
         # bind import modules
         if self.package is not None and self.includes:
             for name in self.includes:
@@ -304,7 +310,7 @@ class IncludeModuleManager(object):
     def __init__(self) -> None:
         self.modules = {}
 
-    def load_module(self, name: str, package) -> ModuleType | None:
+    def load_module(self, name: str, package: PackageBaseResourceWrapper) -> ModuleType | None:
         from hashlib import sha1
         from rez.config import config  # avoiding circular import
         from rez.developer_package import DeveloperPackage

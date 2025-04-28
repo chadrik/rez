@@ -2,7 +2,7 @@
 # Copyright Contributors to the Rez Project
 
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, print_function, annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -17,4 +17,9 @@ else:
 
 class SupportsLessThan(Protocol):
     def __lt__(self, __other: Any) -> bool:
+        pass
+
+
+class SupportsWrite(Protocol):
+    def write(self, __s: str) -> object:
         pass

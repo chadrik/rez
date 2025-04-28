@@ -402,7 +402,7 @@ def _copy_variant_payload(src_variant: Variant,
             )
 
 
-def _get_overlapped_variant_dirs(src_variant) -> list[str]:
+def _get_overlapped_variant_dirs(src_variant: Variant) -> list[str]:
     package = src_variant.parent
     dirs = set()
 
@@ -419,7 +419,8 @@ def _get_overlapped_variant_dirs(src_variant) -> list[str]:
     return list(dirs)
 
 
-def _copy_package_include_modules(src_package, dest_pkg_repo, overrides=None) -> None:
+def _copy_package_include_modules(src_package: Package, dest_pkg_repo: PackageRepository,
+                                  overrides=None) -> None:
     src_include_modules_path = \
         os.path.join(src_package.base, IncludeModuleManager.include_modules_subpath)
 

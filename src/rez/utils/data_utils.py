@@ -14,7 +14,7 @@ from collections.abc import MutableMapping
 
 from rez.vendor.schema.schema import Schema, Optional
 from threading import Lock
-from typing import Generic, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Generic, TypeVar, TYPE_CHECKING
 
 T = TypeVar("T")
 
@@ -267,7 +267,7 @@ else:
                 delattr(instance, name)
 
 
-class cached_class_property(object):
+class cached_class_property(Generic[T]):
     """Simple class property caching descriptor.
 
     Example:
@@ -284,13 +284,13 @@ class cached_class_property(object):
         >>> Foo.bah
         1
     """
-    def __init__(self, func, name=None) -> None:
+    def __init__(self, func: Callable[[Any], T], name=None) -> None:
         self.func = func
         # Make sure that Sphinx autodoc can follow and get the docstring from our wrapped function.
         # TODO: Doesn't work...
-        functools.update_wrapper(self, func)
+        functools.update_wrapper(self, func)  # type: ignore[arg-type]
 
-    def __get__(self, instance, owner=None):
+    def __get__(self, instance, owner=None) -> T:
         assert owner
         name = "_class_property_" + self.func.__name__
         result = getattr(owner, name, KeyError)
@@ -298,7 +298,7 @@ class cached_class_property(object):
         if result is KeyError:
             result = self.func(owner)
             setattr(owner, name, result)
-        return result
+        return result  # type: ignore[return-value]
 
 
 class LazySingleton(Generic[T]):

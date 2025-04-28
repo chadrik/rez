@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from rez.solver import Solver, SolverCallbackReturn, SolverState, SolverStatus, SupportsWrite
+from rez.solver import Solver, SolverCallbackReturn, SolverState, SolverStatus
 from rez.package_repository import package_repository_manager
-from rez.packages import get_variant, get_last_release_time, Variant
+from rez.packages import get_variant, get_last_release_time, Package, Variant
 from rez.package_filter import PackageFilterList, TimestampRule
 from rez.utils.memcached import memcached_client, pool_memcached_connections, Client
 from rez.utils.logging_ import log_duration
@@ -18,8 +18,9 @@ from hashlib import sha1
 from typing import Any, Callable, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rez.package_order import PackageOrder
+    from rez.package_order import PackageOrder, PackageOrderList
     from rez.resolved_context import ResolvedContext
+    from rez.utils.typing import SupportsWrite
 
     from typing import TypedDict
 
@@ -61,14 +62,14 @@ class Resolver(object):
                  package_requests: list[Requirement],
                  package_paths: list[str],
                  package_filter: PackageFilterList | None = None,
-                 package_orderers: list[PackageOrder] | None = None,
+                 package_orderers: PackageOrderList | None = None,
                  timestamp: float | None = 0,
                  callback: Callable[[SolverState], tuple[SolverCallbackReturn, str]] | None = None,
                  building: bool = False,
                  testing: bool = False,
                  verbosity: bool = False,
                  buf: SupportsWrite | None = None,
-                 package_load_callback=None,
+                 package_load_callback: Callable[[Package], Any] | None = None,
                  caching: bool = True,
                  suppress_passive: bool = False,
                  print_stats: bool = False) -> None:

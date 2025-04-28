@@ -150,7 +150,7 @@ def expand_requirement(request: str, paths=None) -> str:
     return str(expanded_req)
 
 
-def expand_requires(*requests):
+def expand_requires(*requests: str) -> list[str]:
     """Create an expanded requirements list.
 
     Example:
@@ -170,7 +170,7 @@ def expand_requires(*requests):
     return [expand_requirement(x) for x in requests]
 
 
-def exec_command(attr: str, cmd: list[str]):
+def exec_command(attr: str, cmd: list[str]) -> tuple[str, str]:
     """Runs a subprocess to calculate a package attribute.
 
     Args:
@@ -193,7 +193,7 @@ def exec_command(attr: str, cmd: list[str]):
     return out.strip(), err.strip()
 
 
-def exec_python(attr, src, executable="python"):
+def exec_python(attr: str, src: list[str], executable="python") -> str:
     """Runs a python subproc to calculate a package attribute.
 
     Args:

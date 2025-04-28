@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 import logging
 
-from rez.solver import SupportsWrite
+from rez.utils.typing import SupportsWrite
 from rez.vendor import colorama
 
 from typing import Callable

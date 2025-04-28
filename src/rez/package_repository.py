@@ -142,7 +142,7 @@ class PackageRepository(object):
 
         return True
 
-    def get_package_family(self, name) -> PackageFamilyResource | None:
+    def get_package_family(self, name: str) -> PackageFamilyResource | None:
         """Get a package family.
 
         Args:
@@ -162,7 +162,7 @@ class PackageRepository(object):
         """
         raise NotImplementedError
 
-    def iter_packages(self, package_family_resource) -> Iterator[PackageResource]:
+    def iter_packages(self, package_family_resource: PackageFamilyResource) -> Iterator[PackageResource]:
         """Iterate over the packages within the given family, in no particular
         order.
 
@@ -592,7 +592,7 @@ class PackageRepositoryManager(object):
 
         return repository
 
-    def are_same(self, path_1, path_2) -> bool:
+    def are_same(self, path_1: str, path_2: str) -> bool:
         """Test that `path_1` and `path_2` refer to the same repository.
 
         This is more reliable than testing that the strings match, since slightly

@@ -25,7 +25,7 @@ from rez.exceptions import PackageNotFoundError, ResolveError, \
     PackageFamilyNotFoundError, RezSystemError
 from rez.version import Version, VersionRange
 from rez.version import VersionedObject, Requirement, RequirementList
-from rez.utils.typing import SupportsLessThan, Protocol
+from rez.utils.typing import SupportsLessThan, SupportsWrite
 from contextlib import contextmanager
 from enum import Enum
 from itertools import product, chain
@@ -38,15 +38,10 @@ import os
 if TYPE_CHECKING:
     from rez.resolved_context import ResolvedContext
     from rez.package_filter import PackageFilterBase
-    from rez.package_order import PackageOrder
+    from rez.package_order import PackageOrderList
 
 
 T = TypeVar("T")
-
-
-class SupportsWrite(Protocol):
-    def write(self, __s: str) -> object:
-        pass
 
 
 # a hidden control for forcing to non-optimized solving mode. This is here as
@@ -1936,7 +1931,7 @@ class Solver(_Common):
                  package_paths: list[str],
                  context: ResolvedContext | None = None,
                  package_filter: PackageFilterBase | None = None,
-                 package_orderers: list[PackageOrder] | None = None,
+                 package_orderers: PackageOrderList | None = None,
                  callback: Callable[[SolverState], tuple[SolverCallbackReturn, str]] | None = None,
                  building: bool = False,
                  optimised: bool = True,

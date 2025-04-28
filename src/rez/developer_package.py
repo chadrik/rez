@@ -39,14 +39,14 @@ class DeveloperPackage(Package):
         self.includes: set[str] | None = None
 
     @property
-    def root(self):
+    def root(self) -> str | None:
         if self.filepath:
             return os.path.dirname(self.filepath)
         else:
             return None
 
     @classmethod
-    def from_path(cls, path, format: FileFormat | None = None):
+    def from_path(cls, path: str, format: FileFormat | None = None) -> DeveloperPackage:
         """Load a developer package.
 
         A developer package may for example be a package.yaml or package.py in a
@@ -137,7 +137,7 @@ class DeveloperPackage(Package):
 
         return package
 
-    def get_reevaluated(self, objects):
+    def get_reevaluated(self, objects) -> DeveloperPackage:
         """Get a newly loaded and re-evaluated package.
 
         Values in `objects` are made available to early-bound package
@@ -175,7 +175,7 @@ class DeveloperPackage(Package):
                     "@include decorator requests module '%s', but the file "
                     "%s does not exist." % (name, filepath))
 
-    def _get_preprocessed(self, data):
+    def _get_preprocessed(self, data: dict) -> tuple[DeveloperPackage, dict] | None:
         """
         Returns:
             (DeveloperPackage, new_data) 2-tuple IF the preprocess function

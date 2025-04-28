@@ -103,7 +103,7 @@ class PackageBaseResourceWrapper(PackageRepositoryResourceWrapper):
         raise NotImplementedError
 
     @property
-    def uri(self):
+    def uri(self) -> str:
         return self.resource.uri
 
     @property

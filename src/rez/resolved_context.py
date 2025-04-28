@@ -56,7 +56,8 @@ import os.path
 
 if TYPE_CHECKING:
     from typing import Literal  # not available in typing module until 3.8
-    from rez.solver import SolverState, SupportsWrite
+    from rez.utils.typing import SupportsWrite
+    from rez.solver import SolverState
     from rez.package_resources import VariantResource
 
 CallableT = TypeVar("CallableT", bound=Callable)
