@@ -12,6 +12,7 @@ unnecessary data from Rex, and provide APIs that will not change.
 """
 from __future__ import annotations
 
+from rez.rex import ActionInterpreter
 from rez.version import VersionRange
 from rez.version import Requirement
 
@@ -61,15 +62,15 @@ class VersionBinding(Binding):
         self.__version = version
 
     @property
-    def major(self):
+    def major(self) -> int:
         return self[0]
 
     @property
-    def minor(self):
+    def minor(self) -> int:
         return self[1]
 
     @property
-    def patch(self):
+    def patch(self) -> int | str:
         return self[2]
 
     def as_tuple(self):
@@ -114,7 +115,8 @@ class VersionBinding(Binding):
 class VariantBinding(Binding):
     """Binds a packages.Variant object.
     """
-    def __init__(self, variant, cached_root=None, interpreter=None) -> None:
+    def __init__(self, variant, cached_root: str | None = None,
+                 interpreter: ActionInterpreter | None = None) -> None:
         doc = dict(version=VersionBinding(variant.version))
         super(VariantBinding, self).__init__(doc)
 
@@ -149,7 +151,7 @@ class VariantBinding(Binding):
     def _is_in_package_cache(self) -> bool:
         return (self.__cached_root is not None)
 
-    def _attr_error(self, attr):
+    def _attr_error(self, attr: str):
         raise AttributeError("package %s has no attribute '%s'"
                              % (str(self), attr))
 
@@ -195,10 +197,10 @@ class RequirementsBinding(RO_MappingBinding):
         doc = dict((x.name, str(x)) for x in requirements)
         super(RequirementsBinding, self).__init__(doc)
 
-    def _attr_error(self, attr):
+    def _attr_error(self, attr: str):
         raise AttributeError("request does not exist: '%s'" % attr)
 
-    def get_range(self, name, default=None):
+    def get_range(self, name: str, default=None) -> Requirement | VersionRange | None:
         """Returns requirement version range object"""
         req_str = self._data.get(name)
         if req_str:
@@ -228,10 +230,10 @@ class EphemeralsBinding(RO_MappingBinding):
         )
         super(EphemeralsBinding, self).__init__(doc)
 
-    def _attr_error(self, attr):
+    def _attr_error(self, attr: str):
         raise AttributeError("ephemeral does not exist: '%s'" % attr)
 
-    def get_range(self, name, default=None):
+    def get_range(self, name: str, default=None) -> Requirement | VersionRange | None:
         """Returns ephemeral version range object"""
         req_str = self._data.get(name)
         if req_str:

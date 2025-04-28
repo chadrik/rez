@@ -14,8 +14,10 @@ from functools import update_wrapper
 from inspect import isgeneratorfunction
 from hashlib import md5
 from uuid import uuid4
-from typing import Iterator
+from typing import Callable, Iterator, TypeVar
 
+
+CallableT = TypeVar("CallableT", bound=Callable)
 
 # this version should be changed if and when the caching interface changes
 cache_interface_version = 2
@@ -268,7 +270,7 @@ def pool_memcached_connections(func):
 
 
 def memcached(servers, key=None, from_cache=None, to_cache=None, time: int=0,
-              min_compress_len: int=0, debug: bool = False):
+              min_compress_len: int=0, debug: bool = False) -> Callable[[CallableT], CallableT]:
     """memcached memoization function decorator.
 
     The wrapped function is expected to return a value that is stored to a

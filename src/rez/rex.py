@@ -538,6 +538,9 @@ class ActionInterpreter(object):
     def shebang(self):
         raise NotImplementedError
 
+    def get_key_token(self, key) -> str:
+        raise NotImplementedError
+
     # --- other
 
     def escape_string(self, value, is_path: bool = False):
@@ -647,7 +650,7 @@ class Python(ActionInterpreter):
     def set_manager(self, manager: ActionManager) -> None:
         self.manager = manager
 
-    def apply_environ(self):
+    def apply_environ(self) -> None:
         """Apply changes to target environ.
         """
         if self.manager is None:
@@ -657,7 +660,7 @@ class Python(ActionInterpreter):
         self.target_environ.update(self.manager.environ)
         self.adjust_env_for_platform(self.target_environ)
 
-    def get_output(self, style=OutputStyle.file):
+    def get_output(self, style=OutputStyle.file) -> dict[str, str]:
         self.apply_environ()
         return self.manager.environ
 

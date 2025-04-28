@@ -207,7 +207,7 @@ class Shell(ActionInterpreter):
 
     def spawn_shell(self, context_file: str, tmpdir, rcfile=None, norc: bool = False,
                     stdin: bool = False, command=None, env=None, quiet: bool = False,
-                    pre_command=None, add_rez: bool = True,
+                    pre_command: str | list[str] | None = None, add_rez: bool = True,
                     package_commands_sourced_first=None, **Popen_args) -> subprocess.Popen:
         """Spawn a possibly interactive subshell.
 
@@ -376,7 +376,7 @@ class UnixShell(Shell):
 
     def spawn_shell(self, context_file, tmpdir, rcfile=None, norc: bool = False,
                     stdin: bool = False, command=None, env=None, quiet: bool = False,
-                    pre_command=None, add_rez: bool = True,
+                    pre_command: str | list[str] | None = None, add_rez: bool = True,
                     package_commands_sourced_first=None, **Popen_args):
 
         d = self.get_startup_sequence(rcfile, norc, bool(stdin), command)

@@ -9,6 +9,7 @@ import os
 import os.path
 from fnmatch import fnmatch
 from rez import __version__
+from rez.solver import SupportsWrite
 from rez.utils.data_utils import cached_property
 from rez.resolved_context import ResolvedContext
 from rez.packages import iter_packages, Package
@@ -29,7 +30,7 @@ class Status(object):
         pass
 
     @cached_property
-    def context_file(self):
+    def context_file(self) -> str | None:
         """Get path to the current context file.
 
         Returns:
@@ -38,7 +39,7 @@ class Status(object):
         return os.getenv("REZ_RXT_FILE")
 
     @cached_property
-    def context(self):
+    def context(self) -> ResolvedContext | None:
         """Get the current context.
 
         Returns:
@@ -48,7 +49,7 @@ class Status(object):
         return ResolvedContext.load(path) if path else None
 
     @cached_property
-    def suites(self):
+    def suites(self) -> list[Suite]:
         """Get currently visible suites.
 
         Visible suites are those whos bin path appea on $PATH.
@@ -59,7 +60,7 @@ class Status(object):
         return Suite.load_visible_suites()
 
     @cached_property
-    def parent_suite(self):
+    def parent_suite(self) -> Suite | None:
         """Get the current parent suite.
 
         A parent suite exists when a context within a suite is active. That is,
@@ -76,7 +77,7 @@ class Status(object):
 
     # TODO: store this info in env-var instead, remove suite info from context.
     @cached_property
-    def active_suite_context_name(self):
+    def active_suite_context_name(self) -> str | None:
         """Get the name of the currently active context in a parent suite.
 
         If a parent suite exists, then an active context exists - this is the
@@ -90,7 +91,7 @@ class Status(object):
             return self.context.suite_context_name
         return None
 
-    def print_info(self, obj=None, buf=sys.stdout):
+    def print_info(self, obj=None, buf: SupportsWrite = sys.stdout) -> bool:
         """Print a status message about the given object.
 
         If an object is not provided, status info is shown about the current
@@ -123,7 +124,7 @@ class Status(object):
             print("Rez does not know what '%s' is" % obj, file=buf)
         return b
 
-    def print_tools(self, pattern=None, buf=sys.stdout) -> bool:
+    def print_tools(self, pattern: str | None = None, buf: SupportsWrite = sys.stdout) -> bool:
         """Print a list of visible tools.
 
         Args:
@@ -149,7 +150,7 @@ class Status(object):
                         label = ''
                         color = None
 
-                    rows.append([tool, '-', pkg_str, "active context", label, color])
+                    rows.append((tool, '-', pkg_str, "active context", label, color))
                     seen.add(tool)
 
         for suite in self.suites:
@@ -184,7 +185,7 @@ class Status(object):
                 source = ("context '%s' in suite '%s'"
                           % (d["context_name"], suite.load_path))
 
-                rows.append([tool, orig_tool, pkg_str, source, label, color])
+                rows.append((tool, orig_tool, pkg_str, source, label, color))
                 seen.add(tool)
 
         _pr = Printer(buf)
@@ -192,8 +193,8 @@ class Status(object):
             _pr("No matching tools.")
             return False
 
-        headers = [["TOOL", "ALIASING", "PACKAGE", "SOURCE", "", None],
-                   ["----", "--------", "-------", "------", "", None]]
+        headers = [("TOOL", "ALIASING", "PACKAGE", "SOURCE", "", None),
+                   ("----", "--------", "-------", "------", "", None)]
         rows = headers + sorted(rows, key=lambda x: x[0].lower())
         print_colored_columns(_pr, rows)
         return True

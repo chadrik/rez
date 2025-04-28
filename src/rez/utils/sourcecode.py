@@ -10,7 +10,8 @@ from rez.utils.logging_ import print_debug
 from rez.util import load_module_from_file
 from inspect import getsourcelines
 from textwrap import dedent
-from types import FunctionType, MethodType
+from types import CodeType, FunctionType, MethodType, ModuleType
+from typing import Callable
 from glob import glob
 import traceback
 import os.path
@@ -96,7 +97,7 @@ class SourceCode(object):
     This object is aware of the decorators defined in this sourcefile (such as
     'include') and deals with them appropriately.
     """
-    def __init__(self, source: str | None = None, func: FunctionType | MethodType | None = None,
+    def __init__(self, source: str | None = None, func: Callable | None = None,
                  filepath: str | None = None, eval_as_function: bool = True) -> None:
         self.source = (source or '').rstrip()
         self.func = func
@@ -123,6 +124,7 @@ class SourceCode(object):
         return other
 
     def _init_from_func(self) -> None:
+        assert self.func is not None
         self.funcname = self.func.__name__
         self.decorators = getattr(self.func, "_decorators", [])
 
@@ -195,7 +197,7 @@ class SourceCode(object):
         return "<%s>" % filename
 
     @cached_property
-    def compiled(self):
+    def compiled(self) -> CodeType:
         try:
             pyc = compile(self.evaluated_code, self.sourcename, 'exec')
         except Exception as e:
@@ -302,7 +304,7 @@ class IncludeModuleManager(object):
     def __init__(self) -> None:
         self.modules = {}
 
-    def load_module(self, name, package):
+    def load_module(self, name: str, package) -> ModuleType | None:
         from hashlib import sha1
         from rez.config import config  # avoiding circular import
         from rez.developer_package import DeveloperPackage

@@ -18,6 +18,7 @@ import inspect
 from rez.exceptions import RezError
 from rez.vendor.progress.bar import Bar
 
+from types import ModuleType
 from typing import Iterable, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -60,8 +61,9 @@ def dedup(seq):
 _find_unsafe = re.compile(r'[^\w@%+=`:,./-]').search
 
 
-def shlex_join(value: Iterable[str], unsafe_regex=None, replacements=None,
-               enclose_with='"'):
+def shlex_join(value: Iterable[str], unsafe_regex=None,
+               replacements: Iterable[tuple[str | re.Pattern[str], str]] | None = None,
+               enclose_with: str = '"') -> str:
     """Join args into a valid shell command.
     """
 
@@ -89,7 +91,7 @@ def shlex_join(value: Iterable[str], unsafe_regex=None, replacements=None,
 
 
 # returns path to first program in the list to be successfully found
-def which(*programs, **shutilwhich_kwargs):
+def which(*programs, **shutilwhich_kwargs) -> str | None:
     from rez.utils.which import which as which_
 
     for prog in programs:
@@ -100,7 +102,7 @@ def which(*programs, **shutilwhich_kwargs):
 
 
 # case-insensitive fuzzy string match
-def get_close_matches(term, fields, fuzziness: float=0.4, key=None):
+def get_close_matches(term: str, fields, fuzziness: float=0.4, key=None):
     import math
     import difflib
 
@@ -180,7 +182,7 @@ def get_function_arg_names(func):
     return spec.args + spec.kwonlyargs
 
 
-def load_module_from_file(name: str, filepath: str):
+def load_module_from_file(name: str, filepath: str) -> ModuleType:
     """Load a python module from a sourcefile.
 
     Args:

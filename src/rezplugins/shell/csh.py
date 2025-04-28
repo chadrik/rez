@@ -5,6 +5,8 @@
 """
 CSH shell
 """
+from __future__ import annotations
+
 import os.path
 import subprocess
 import re
@@ -16,6 +18,8 @@ from rez.utils.execution import Popen
 from rez.utils.platform_ import platform_
 from rez.shells import UnixShell
 from rez.rex import EscapedString
+
+from typing import Iterable
 
 
 class CSH(UnixShell):
@@ -119,8 +123,8 @@ class CSH(UnixShell):
         return result
 
     @classmethod
-    def join(cls, command):
-        replacements = [
+    def join(cls, command: Iterable[str]):
+        replacements: list[tuple[str | re.Pattern[str], str]] = [
             # escape ! as \!
             ('!', "\\!"),
 

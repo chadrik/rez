@@ -82,7 +82,7 @@ def extend_path(path, name):
 
 def uncache_rezplugins_module_paths(instance=None) -> None:
     instance = instance or plugin_manager
-    cached_property.uncache(instance, "rezplugins_module_paths")
+    cached_property.uncache(instance, "rezplugins_module_paths")  # type: ignore[attr-defined]
 
 
 class RezPluginType(object):

@@ -974,7 +974,7 @@ class FileSystemPackageRepository(PackageRepository):
         return repo_copy
 
     @contextmanager
-    def _lock_package(self, package_name, package_version: str | Version | None = None):
+    def _lock_package(self, package_name: str, package_version: str | Version | None = None):
         from rez.vendor.lockfile import NotLocked
 
         if _settings.file_lock_type == 'default':
@@ -1039,15 +1039,15 @@ class FileSystemPackageRepository(PackageRepository):
 
     # -- internal
 
-    def _get_family_dirs__key(self):
+    def _get_family_dirs__key(self) -> str:
         if os.path.isdir(self.location):
             st = os.stat(self.location)
             return str(("listdir", self.location, int(st.st_ino), st.st_mtime))
         else:
             return str(("listdir", self.location))
 
-    def _get_family_dirs(self):
-        dirs = []
+    def _get_family_dirs(self) -> list[tuple[str, str | None]]:
+        dirs: list[tuple[str, str | None]] = []
         if not os.path.isdir(self.location):
             return dirs
 
@@ -1067,11 +1067,11 @@ class FileSystemPackageRepository(PackageRepository):
 
         return dirs
 
-    def _get_version_dirs__key(self, root):
+    def _get_version_dirs__key(self, root: str) -> str:
         st = os.stat(root)
         return str(("listdir", root, int(st.st_ino), st.st_mtime))
 
-    def _get_version_dirs(self, root):
+    def _get_version_dirs(self, root: str) -> list[str]:
         # Ignore a version if there is a .ignore<version> file next to it
         def ignore_dir(name):
             if self.disable_pkg_ignore:
@@ -1101,7 +1101,7 @@ class FileSystemPackageRepository(PackageRepository):
         # tested regardless. Failed releases may cause 'building files' to be
         # left behind, so we need to clear these out also
         #
-        dirs = set()
+        dirs_set = set()
         building_dirs = set()
 
         # find dirs and dirs marked as 'building'
@@ -1116,22 +1116,22 @@ class FileSystemPackageRepository(PackageRepository):
             path = os.path.join(root, name)
 
             if os.path.isdir(path) and not ignore_dir(name):
-                dirs.add(name)
+                dirs_set.add(name)
 
         # check 'building' dirs for validity
         for name in building_dirs:
-            if name not in dirs:
+            if name not in dirs_set:
                 continue
 
             path = os.path.join(root, name)
             if not self._is_valid_package_directory(path):
                 # package probably still being built
-                dirs.remove(name)
+                dirs_set.remove(name)
 
-        return list(dirs)
+        return list(dirs_set)
 
     # True if `path` contains package.py or similar
-    def _is_valid_package_directory(self, path):
+    def _is_valid_package_directory(self, path: str) -> bool:
         return bool(self._get_file(path, "package")[0])
 
     def _get_families(self) -> list[PackageFamilyResource]:
@@ -1188,7 +1188,7 @@ class FileSystemPackageRepository(PackageRepository):
     def _get_variants(self, package_resource: PackageResourceHelper) -> list[VariantResource]:
         return [x for x in package_resource.iter_variants()]
 
-    def _get_file(self, path, package_filename=None) -> tuple[str, FileFormat] | tuple[None, None]:
+    def _get_file(self, path: str, package_filename=None) -> tuple[str, FileFormat] | tuple[None, None]:
         if package_filename:
             package_filenames = [package_filename]
         else:
@@ -1203,7 +1203,7 @@ class FileSystemPackageRepository(PackageRepository):
                     return filepath, format_
         return None, None
 
-    def _create_family(self, name: str):
+    def _create_family(self, name: str) -> PackageFamilyResource:
         path = os.path.join(self.location, name)
         if not os.path.exists(path):
             os.makedirs(path)

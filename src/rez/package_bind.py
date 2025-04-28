@@ -109,7 +109,7 @@ def bind_package(name: str, path: str | None = None, version_range=None,
     while pending:
         pending_ = pending
         pending = set()
-        exc_type = _NeverError
+        exc_type: type[Exception] = _NeverError
 
         for name_ in pending_:
             # turn error on binding of dependencies into a warning - we don't

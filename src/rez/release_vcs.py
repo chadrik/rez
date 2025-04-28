@@ -14,13 +14,13 @@ from shlex import quote
 import subprocess
 
 
-def get_release_vcs_types():
+def get_release_vcs_types() -> list[str]:
     """Returns the available VCS implementations - git, hg etc."""
     from rez.plugin_managers import plugin_manager
     return plugin_manager.get_plugins('release_vcs')
 
 
-def create_release_vcs(path, vcs_name=None):
+def create_release_vcs(path: str, vcs_name: str | None = None) -> ReleaseVCS:
     """Return a new release VCS that can release from this source path."""
     from rez.plugin_managers import plugin_manager
     vcs_types = get_release_vcs_types()
@@ -72,7 +72,7 @@ def create_release_vcs(path, vcs_name=None):
 class ReleaseVCS(object):
     """A version control system (VCS) used to release Rez packages.
     """
-    def __init__(self, pkg_root: str, vcs_root=None) -> None:
+    def __init__(self, pkg_root: str, vcs_root: str | None = None) -> None:
         if vcs_root is None:
             result = self.find_vcs_root(pkg_root)
             if not result:
@@ -89,12 +89,12 @@ class ReleaseVCS(object):
         self.settings = self.type_settings.get(self.name())
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
         """Return the name of the VCS type, eg 'git'."""
         raise NotImplementedError
 
     @classmethod
-    def find_executable(cls, name: str):
+    def find_executable(cls, name: str) -> str:
         exe = which(name)
         if not exe:
             raise ReleaseVCSError("Couldn't find executable '%s' for VCS '%s'"
@@ -102,7 +102,7 @@ class ReleaseVCS(object):
         return exe
 
     @classmethod
-    def is_valid_root(cls, path: str):
+    def is_valid_root(cls, path: str) -> bool:
         """Return True if the given path is a valid root directory for this
         version control system.
 
@@ -113,14 +113,14 @@ class ReleaseVCS(object):
         raise NotImplementedError
 
     @classmethod
-    def search_parents_for_root(cls):
+    def search_parents_for_root(cls) -> bool:
         """Return True if this vcs type should check parent directories to
         find the root directory
         """
         raise NotImplementedError
 
     @classmethod
-    def find_vcs_root(cls, path: str):
+    def find_vcs_root(cls, path: str) -> tuple[str, int] | None:
         """Try to find a version control root directory of this type for the
         given path.
 
@@ -139,7 +139,7 @@ class ReleaseVCS(object):
                 return current_path, i
         return None
 
-    def validate_repostate(self):
+    def validate_repostate(self) -> None:
         """Ensure that the VCS working copy is up-to-date."""
         raise NotImplementedError
 
@@ -182,7 +182,7 @@ class ReleaseVCS(object):
         """
         raise NotImplementedError
 
-    def create_release_tag(self, tag_name: str, message=None):
+    def create_release_tag(self, tag_name: str, message: str | None = None) -> None:
         """Create a tag in the repo.
 
         Create a tag in the repository representing the release of the
@@ -195,7 +195,7 @@ class ReleaseVCS(object):
         raise NotImplementedError
 
     @classmethod
-    def export(cls, revision, path: str):
+    def export(cls, revision: object, path: str) -> None:
         """Export the repository to the given path at the given revision.
 
         Note:

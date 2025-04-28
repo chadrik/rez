@@ -491,7 +491,7 @@ class WindowsPlatform(Platform):
         # https://msdn.microsoft.com/en-us/library/windows/desktop/ms684863%28v=vs.85%29.aspx
         return dict(creationflags=0x00000010)
 
-    def symlink(self, source, link_name):
+    def symlink(self, source: str, link_name: str):
         # If we are already in a version of python that supports symlinks then
         # just use the os module, otherwise fall back on ctypes.  It requires
         # administrator privileges to run or the correct group policy to be set.
@@ -516,7 +516,7 @@ class WindowsPlatform(Platform):
     def _terminal_emulator_command(self) -> str:
         return "START"
 
-    def _physical_cores_from_wmic(self):
+    def _physical_cores_from_wmic(self) -> int | None:
         # windows
         import subprocess
         try:
@@ -547,7 +547,7 @@ class WindowsPlatform(Platform):
 
         return sum(map(int, result))
 
-    def _physical_cores(self):
+    def _physical_cores(self) -> int | None:
         return self._physical_cores_from_wmic()
 
     def _difftool(self):

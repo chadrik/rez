@@ -14,7 +14,7 @@ from rez.vendor import yaml
 from rez.vendor.yaml.error import YAMLError
 from rez.utils.yaml import dump_yaml
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import cast, Callable, TYPE_CHECKING, Any, NoReturn
 import os
 import os.path
 import shutil
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
         context_name: str
         variant: Variant | set[Variant]
 
-    class Context(TypedDict):
+    class Context(TypedDict, total=False):
         name: str
         context: ResolvedContext
         tool_aliases: dict[str, str]
@@ -432,7 +432,7 @@ class Suite(object):
     def to_dict(self):
         contexts_ = {}
         for k, data in self.contexts.items():
-            data_: dict[str, Any] = data.copy()
+            data_ = cast(dict[str, Any], data.copy())
             if "context" in data_:
                 del data_["context"]
             if "loaded" in data_:
@@ -442,7 +442,7 @@ class Suite(object):
         return dict(contexts=contexts_)
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d) -> Suite:
         s = Suite.__new__(Suite)
         s.load_path = None
         s.tools = None
@@ -519,7 +519,7 @@ class Suite(object):
                                      prefix_char=prefix_char)
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> Suite:
         if not os.path.exists(path):
             open(path)  # raise IOError
         filepath = os.path.join(path, "suite.yaml")
@@ -537,7 +537,7 @@ class Suite(object):
         return s
 
     @classmethod
-    def visible_suite_paths(cls, paths=None):
+    def visible_suite_paths(cls, paths: list[str] | None = None):
         """Get a list of paths to suites that are visible on $PATH.
 
         Returns:
@@ -555,7 +555,7 @@ class Suite(object):
         return suite_paths
 
     @classmethod
-    def load_visible_suites(cls, paths=None):
+    def load_visible_suites(cls, paths: list[str] | None = None) -> list[Suite]:
         """Get a list of suites whos bin paths are visible on $PATH.
 
         Returns:
@@ -589,8 +589,8 @@ class Suite(object):
             context_variants[context_name].add(str(entry["variant"]))
 
         _pr()
-        rows = [["NAME", "VISIBLE TOOLS", "PATH"],
-                ["----", "-------------", "----"]]
+        rows = [("NAME", "VISIBLE TOOLS", "PATH"),
+                ("----", "-------------", "----")]
 
         for context_name in context_names:
             context_path = self._context_path(context_name) or '-'
@@ -650,7 +650,7 @@ class Suite(object):
 
         rows = [("TOOL", "ALIASING", "PACKAGE", "CONTEXT", ""),
                 ("----", "--------", "-------", "-------", "")]
-        colors = [None, None]
+        colors: list[Callable[[str], str] | None] = [None, None]
 
         entries_dict = defaultdict(list)
         for d in self.get_tools().values():
@@ -706,7 +706,7 @@ class Suite(object):
             raise SuiteError("No such context: %r" % name)
         return data
 
-    def _context_path(self, name, suite_path=None):
+    def _context_path(self, name: str, suite_path=None):
         suite_path = suite_path or self.load_path
         if not suite_path:
             return None
@@ -727,7 +727,7 @@ class Suite(object):
         self.tool_conflicts = None
         self.hidden_tools = None
 
-    def _validate_tool(self, context_name, tool_name):
+    def _validate_tool(self, context_name: str, tool_name: str) -> None:
         context = self.context(context_name)
         context_tools = context.get_tools(request_only=True)
         for _, tool_names in context_tools.values():
@@ -785,8 +785,8 @@ class Suite(object):
                         self.tools[alias] = entry
 
 
-def _FWD__invoke_suite_tool_alias(context_name, tool_name, prefix_char=None,
-                                  _script=None, _cli_args=None) -> None:
+def _FWD__invoke_suite_tool_alias(context_name: str, tool_name: str, prefix_char=None,
+                                  _script=None, _cli_args=None) -> NoReturn:
     suite_path = os.path.dirname(os.path.dirname(_script))
     path = os.path.join(suite_path, "contexts", "%s.rxt" % context_name)
     context = ResolvedContext.load(path)

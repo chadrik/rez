@@ -15,11 +15,25 @@ from rez.version import Requirement
 from contextlib import contextmanager
 from enum import Enum
 from hashlib import sha1
-from typing import Callable, Iterator, TYPE_CHECKING
+from typing import Any, Callable, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from rez.package_order import PackageOrder
     from rez.resolved_context import ResolvedContext
+
+    from typing import TypedDict
+
+    # FIXME: move this out of TYPE_CHECKING block when python 3.7 support is dropped
+    class SolverDict(TypedDict):
+        status: ResolverStatus
+        graph: Any  # digraph
+        solve_time: float | None
+        load_time: float | None
+        failure_description: str | None
+        variant_handles: list[dict[str, Any]]
+        ephemerals: list[str]
+else:
+    SolverDict = dict
 
 
 class ResolverStatus(Enum):
@@ -124,8 +138,8 @@ class Resolver(object):
         self.from_cache = False
         self.memcached_servers = config.memcached_uri if config.resolve_caching else None
 
-        self.solve_time = 0.0  # time spent solving
-        self.load_time = 0.0   # time spent loading package resources
+        self.solve_time: float | None = 0.0  # time spent solving
+        self.load_time: float | None = 0.0   # time spent loading package resources
 
         self._print = config.debug_printer("resolve_memcache")
 
@@ -191,7 +205,7 @@ class Resolver(object):
     def _get_variant(self, variant_handle) -> Variant:
         return get_variant(variant_handle, context=self.context)
 
-    def _get_cached_solve(self):
+    def _get_cached_solve(self) -> SolverDict | None:
         """Find a memcached resolve.
 
         If there is NOT a resolve timestamp:
@@ -239,27 +253,27 @@ class Resolver(object):
         variant_states = {}
         last_release_times = {}
 
-        def _hit(data):
+        def _hit(data: tuple[SolverDict, dict, dict]) -> SolverDict:
             solver_dict, _, _ = data
             return solver_dict
 
-        def _miss():
+        def _miss() -> None:
             self._print("No cache key retrieved")
             return None
 
-        def _delete_cache_entry(key) -> None:
+        def _delete_cache_entry(key: str) -> None:
             with self._memcached_client() as client:
                 client.delete(key)
             self._print("Discarded entry: %r", key)
 
-        def _retrieve(timestamped):
+        def _retrieve(timestamped: bool) -> tuple[str, tuple[SolverDict, dict, dict]]:
             key = self._memcache_key(timestamped=timestamped)
             self._print("Retrieving memcache key: %r", key)
             with self._memcached_client() as client:
                 data = client.get(key)
             return key, data
 
-        def _packages_changed(key, data) -> bool:
+        def _packages_changed(key: str, data: tuple[SolverDict, dict, dict]) -> bool:
             solver_dict, _, variant_states_dict = data
             for variant_handle in solver_dict.get("variant_handles", []):
                 variant = self._get_variant(variant_handle)
@@ -285,7 +299,7 @@ class Resolver(object):
                     return True
             return False
 
-        def _releases_since_solve(key, data) -> bool:
+        def _releases_since_solve(key: str, data: tuple[SolverDict, dict, dict]) -> bool:
             _, release_times_dict, _ = data
             for package_name, release_time in release_times_dict.items():
                 time_ = last_release_times.get(package_name)
@@ -301,7 +315,7 @@ class Resolver(object):
                     return True
             return False
 
-        def _timestamp_is_earlier(key, data) -> bool:
+        def _timestamp_is_earlier(key: str, data: tuple[SolverDict, dict, dict]) -> bool:
             _, release_times_dict, _ = data
             for package_name, release_time in release_times_dict.items():
                 if self.timestamp < release_time:
@@ -322,18 +336,18 @@ class Resolver(object):
 
             key, data = _retrieve(True)
             if not data:
-                return _miss()
+                return _miss()  # type: ignore[func-returns-value]
             if _packages_changed(key, data):
                 _delete_cache_entry(key)
-                return _miss()
+                return _miss()  # type: ignore[func-returns-value]
             else:
                 return _hit(data)
         else:
             if not data:
-                return _miss()
+                return _miss()  # type: ignore[func-returns-value]
             if _packages_changed(key, data) or _releases_since_solve(key, data):
                 _delete_cache_entry(key)
-                return _miss()
+                return _miss()  # type: ignore[func-returns-value]
             else:
                 return _hit(data)
 
@@ -343,7 +357,7 @@ class Resolver(object):
                               debug=config.debug_memcache) as client:
             yield client
 
-    def _set_cached_solve(self, solver_dict) -> None:
+    def _set_cached_solve(self, solver_dict: SolverDict) -> None:
         """Store a solve to memcached.
 
         If there is NOT a resolve timestamp:
@@ -393,7 +407,7 @@ class Resolver(object):
             client.set(key, data)
         self._print("Sent memcache key: %r", key)
 
-    def _memcache_key(self, timestamped: bool = False):
+    def _memcache_key(self, timestamped: bool = False) -> str:
         """Makes a key suitable as a memcache entry."""
         request = tuple(map(str, self.package_requests))
         repo_ids = []
@@ -433,7 +447,7 @@ class Resolver(object):
 
         return solver
 
-    def _set_result(self, solver_dict) -> None:
+    def _set_result(self, solver_dict: SolverDict) -> None:
         self.status_ = solver_dict.get("status")
         self.graph_ = solver_dict.get("graph")
         self.solve_time = solver_dict.get("solve_time")
@@ -456,7 +470,7 @@ class Resolver(object):
                 self.resolved_ephemerals_.append(req)
 
     @classmethod
-    def _solver_to_dict(cls, solver: Solver) -> dict:
+    def _solver_to_dict(cls, solver: Solver) -> SolverDict:
         graph_ = solver.get_graph()
         solve_time = solver.solve_time
         load_time = solver.load_time
@@ -484,7 +498,7 @@ class Resolver(object):
             for ephemeral in solver.resolved_ephemerals:
                 ephemerals.append(str(ephemeral))
 
-        return dict(
+        return SolverDict(
             status=status_,
             graph=graph_,
             solve_time=solve_time,

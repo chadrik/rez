@@ -96,7 +96,7 @@ class PackageBaseResourceWrapper(PackageRepositoryResourceWrapper):
         # cached results of late-bound funcs
         self._late_binding_returnvalues = {}
 
-    def set_context(self, context: ResolvedContext) -> None:
+    def set_context(self, context: ResolvedContext | None) -> None:
         self.context = context
 
     def arbitrary_keys(self):
@@ -226,7 +226,7 @@ class Package(PackageBaseResourceWrapper):
         else:
             raise AttributeError("Package instance has no attribute '%s'" % name)
 
-    def arbitrary_keys(self):
+    def arbitrary_keys(self) -> set[str]:
         """Get the arbitrary keys present in this package.
 
         These are any keys not in the standard list ('name', 'version' etc).
@@ -352,7 +352,8 @@ class Variant(PackageBaseResourceWrapper):
     #: See :attr:`Package.is_variant`.
     is_variant = True
 
-    def __init__(self, resource: VariantResource, context=None, parent=None) -> None:
+    def __init__(self, resource: VariantResource, context: ResolvedContext | None = None,
+                 parent: Package | None = None) -> None:
         _check_class(resource, VariantResource)
         super(Variant, self).__init__(resource, context)
         self._parent = parent
@@ -364,7 +365,7 @@ class Variant(PackageBaseResourceWrapper):
         except AttributeError:
             raise AttributeError("Variant instance has no attribute '%s'" % name)
 
-    def arbitrary_keys(self):
+    def arbitrary_keys(self) -> set[str]:
         return self.parent.arbitrary_keys()
 
     @cached_property

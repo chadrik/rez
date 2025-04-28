@@ -106,7 +106,7 @@ def open_file_for_write(filepath, mode=None):
     file_cache[filepath] = cache_filepath
 
 
-def load_from_file(filepath, format_=FileFormat.py, update_data_callback=None,
+def load_from_file(filepath: str, format_=FileFormat.py, update_data_callback=None,
                    disable_memcache: bool = False):
     """Load data from a file.
 
@@ -158,11 +158,11 @@ def _load_from_file__key(filepath, format_, update_data_callback):
            min_compress_len=config.memcached_package_file_min_compress_len,
            key=_load_from_file__key,
            debug=config.debug_memcache)
-def _load_from_file(filepath, format_, update_data_callback):
+def _load_from_file(filepath: str, format_, update_data_callback):
     return _load_file(filepath, format_, update_data_callback)
 
 
-def _load_file(filepath, format_, update_data_callback, original_filepath=None):
+def _load_file(filepath: str, format_, update_data_callback, original_filepath=None):
     load_func = load_functions[format_]
 
     if debug_print:

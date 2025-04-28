@@ -21,7 +21,7 @@ from rez.utils.filesystem import TempDirs, is_subdirectory, canonical_path
 from rez.utils.memcached import pool_memcached_connections
 from rez.utils.logging_ import print_error, print_warning
 from rez.utils.which import which
-from rez.rex import ActionInterpreter, RexExecutor, Python, OutputStyle, literal
+from rez.rex import Action, ActionInterpreter, RexExecutor, Python, OutputStyle, literal
 from rez.rex_bindings import VersionBinding, VariantBinding, \
     VariantsBinding, RequirementsBinding, EphemeralsBinding, intersects
 from rez import package_order
@@ -44,7 +44,7 @@ from rez.utils.platform_ import platform_
 from contextlib import contextmanager
 from functools import wraps
 from enum import Enum
-from typing import Any, Callable, Iterable, Mapping, NoReturn, Sequence, TypeVar, TYPE_CHECKING
+from typing import cast, Any, Callable, Iterable, Mapping, NoReturn, Sequence, TypeVar, TYPE_CHECKING
 import getpass
 import json
 import socket
@@ -55,6 +55,7 @@ import os
 import os.path
 
 if TYPE_CHECKING:
+    from typing import Literal  # not available in typing module until 3.8
     from rez.solver import SolverState, SupportsWrite
     from rez.package_resources import VariantResource
 
@@ -142,7 +143,7 @@ def _on_success(fn: CallableT) -> CallableT:
         else:
             raise ResolvedContextError(
                 "Cannot perform operation in a failed context")
-    return _check
+    return _check  # type: ignore[return-value]
 
 
 class ResolvedContext(object):
@@ -164,14 +165,16 @@ class ResolvedContext(object):
     local = threading.local()
 
     class Callback(object):
-        def __init__(self, max_fails: int, time_limit, callback, buf: SupportsWrite | None = None) -> None:
+        def __init__(self, max_fails: int, time_limit,
+                     callback: Callable[[SolverState], tuple[SolverCallbackReturn, str]] | None,
+                     buf: SupportsWrite | None = None) -> None:
             self.max_fails = max_fails
             self.time_limit = time_limit
             self.callback = callback
             self.start_time = time.time()
             self.buf = buf or sys.stdout
 
-        def __call__(self, state):
+        def __call__(self, state: SolverState) -> tuple[SolverCallbackReturn, str]:
             if self.max_fails != -1 and state.num_fails >= self.max_fails:
                 reason = ("fail limit reached: aborted after %d failures"
                           % state.num_fails)
@@ -202,8 +205,8 @@ class ResolvedContext(object):
                  buf: SupportsWrite | None = None,
                  suppress_passive: bool = False,
                  print_stats: bool = False,
-                 package_caching=None,
-                 package_cache_async=None) -> None:
+                 package_caching: bool | None = None,
+                 package_cache_async: bool | None = None) -> None:
         """Perform a package resolve, and store the result.
 
         Args:
@@ -275,7 +278,7 @@ class ResolvedContext(object):
         self.package_filter = (PackageFilterList.singleton if package_filter is None
                                else package_filter)
 
-        self.package_orderers = PackageOrderList(
+        self.package_orderers: PackageOrderList | None = PackageOrderList(
             PackageOrderList.singleton if package_orderers is None
             else package_orderers
         )
@@ -463,7 +466,7 @@ class ResolvedContext(object):
             and other.resolved_packages == self.resolved_packages
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         list_: list[Any] = []
         req = self.requested_packages(True)
         list_.append(tuple(req))
@@ -477,7 +480,7 @@ class ResolvedContext(object):
         return hash(value)
 
     @property
-    def has_graph(self):
+    def has_graph(self) -> bool:
         """Return True if the resolve has a graph."""
         return bool((self.graph_ is not None) or self.graph_string)
 
@@ -558,7 +561,8 @@ class ResolvedContext(object):
 
     # TODO: deprecate in favor of patch() method
     def get_patched_request(self, package_requests=None,
-                            package_subtractions=None, strict: bool = False, rank: int=0):
+                            package_subtractions=None, strict: bool = False, rank: int=0
+                            ) -> list[Requirement | PackageRequest | str]:
         """Get a 'patched' request.
 
         A patched request is a copy of this context's request, but with some
@@ -597,7 +601,7 @@ class ResolvedContext(object):
         """
         # assemble source request
         if strict:
-            request = []
+            request: list[Requirement | PackageRequest] = []
             for variant in self.resolved_packages:
                 req = PackageRequest(variant.qualified_package_name)
                 request.append(req)
@@ -653,9 +657,9 @@ class ResolvedContext(object):
                         version = next(version)
                         req_str = "~%s<%s" % (variant.name, str(version))
                         rank_limiters.append(req_str)
-            request += rank_limiters
-
-        return request
+            return request + rank_limiters
+        else:
+            return cast("list[Requirement | PackageRequest | str]", request)
 
     def graph(self, as_dot: bool = False):
         """Get the resolve graph.
@@ -740,7 +744,7 @@ class ResolvedContext(object):
         return context
 
     @classmethod
-    def read_from_buffer(cls, buf, identifier_str=None) -> ResolvedContext | None:
+    def read_from_buffer(cls, buf, identifier_str: str | None = None) -> ResolvedContext:
         """Load the context from a buffer."""
         try:
             return cls._read_from_buffer(buf, identifier_str)
@@ -1010,7 +1014,7 @@ class ResolvedContext(object):
         conflicts = set(self.get_conflicting_tools().keys())
         rows = [["TOOL", "PACKAGE", ""],
                 ["----", "-------", ""]]
-        colors = [None, None]
+        colors: list[Callable[[str], str] | None] = [None, None]
 
         for _, (variant, tools) in sorted(data.items()):
             pkg_str = variant.qualified_package_name
@@ -1023,10 +1027,11 @@ class ResolvedContext(object):
                 rows.append(row)
                 colors.append(col)
 
-        for col, line in zip(colors, columnise(rows)):
-            _pr(line, col)
+        for colorizer, line in zip(colors, columnise(rows)):
+            _pr(line, colorizer)
 
-    def print_resolve_diff(self, other, heading=None) -> None:
+    def print_resolve_diff(self, other: ResolvedContext,
+                           heading: Literal[True] | None | tuple[str, str] = None) -> None:
         """Print the difference between the resolve of two contexts.
 
         Args:
@@ -1132,7 +1137,7 @@ class ResolvedContext(object):
             return g
 
     @_on_success
-    def validate(self):
+    def validate(self) -> None:
         """Validate the context."""
         try:
             for pkg in self.resolved_packages:
@@ -1238,7 +1243,9 @@ class ResolvedContext(object):
         return conflicts
 
     @_on_success
-    def get_shell_code(self, shell: str | None = None, parent_environ=None, style=OutputStyle.file):
+    def get_shell_code(self, shell: str | None = None,
+                       parent_environ: Mapping[str, str] | None = None,
+                       style=OutputStyle.file) -> str:
         """Get the shell code resulting from intepreting this context.
 
         Args:
@@ -1258,7 +1265,7 @@ class ResolvedContext(object):
         return executor.get_output(style)
 
     @_on_success
-    def get_actions(self, parent_environ=None):
+    def get_actions(self, parent_environ: Mapping[str, str] | None = None) -> list[Action]:
         """Get the list of rex.Action objects resulting from interpreting this
         context. This is provided mainly for testing purposes.
 
@@ -1275,7 +1282,7 @@ class ResolvedContext(object):
         return executor.actions
 
     @_on_success
-    def apply(self, parent_environ=None) -> None:
+    def apply(self, parent_environ: Mapping[str, str] | None = None) -> None:
         """Apply the context to the current python session.
 
         Note that this updates os.environ and possibly sys.path, if
@@ -1291,7 +1298,7 @@ class ResolvedContext(object):
         interpreter.apply_environ()
 
     @_on_success
-    def which(self, cmd, parent_environ=None, fallback: bool = False):
+    def which(self, cmd, parent_environ: Mapping[str, str] | None = None, fallback: bool = False):
         """Find a program in the resolved environment.
 
         Args:
@@ -1311,7 +1318,7 @@ class ResolvedContext(object):
         return path
 
     @_on_success
-    def execute_command(self, args, parent_environ=None, **Popen_args):
+    def execute_command(self, args, parent_environ: dict[str, str] | None = None, **Popen_args):
         """Run a command within a resolved context.
 
         This applies the context to a python environ dict, then runs a
@@ -1336,7 +1343,7 @@ class ResolvedContext(object):
         Note:
             This does not alter the current python session.
         """
-        if parent_environ in (None, os.environ):
+        if parent_environ is None or parent_environ is os.environ:
             target_environ = {}
         else:
             target_environ = parent_environ.copy()
@@ -1348,7 +1355,9 @@ class ResolvedContext(object):
         return interpreter.subprocess(args, **Popen_args)
 
     @_on_success
-    def execute_rex_code(self, code, filename=None, shell=None,
+    def execute_rex_code(self, code: str,
+                         filename: str | None = None,
+                         shell: str | None = None,
                          parent_environ: Mapping[str, str] | None = None, **Popen_args):
         """Run some rex code in the context.
 
@@ -1806,7 +1815,7 @@ class ResolvedContext(object):
 
     @classmethod
     @contextmanager
-    def _detect_bundle(cls, path):
+    def _detect_bundle(cls, path: str):
         bundle_path = None
         base_dir = os.path.dirname(os.path.abspath(path))
         bundle_filepath = os.path.join(base_dir, "bundle.yaml")
@@ -1988,7 +1997,7 @@ class ResolvedContext(object):
             msg += " from %s" % path
         raise ResolvedContextError("%s: %s: %s" % (msg, exc_name, str(e)))
 
-    def _set_parent_suite(self, suite_path, context_name: str) -> None:
+    def _set_parent_suite(self, suite_path: str, context_name: str) -> None:
         self.parent_suite_path = suite_path
         self.suite_context_name = context_name
 
@@ -2001,7 +2010,7 @@ class ResolvedContext(object):
                            parent_environ=parent_environ,
                            parent_variables=parent_vars)
 
-    def _get_pre_resolve_bindings(self):
+    def _get_pre_resolve_bindings(self) -> dict:
         if self.pre_resolve_bindings is None:
             self.pre_resolve_bindings = {
                 "system": system,

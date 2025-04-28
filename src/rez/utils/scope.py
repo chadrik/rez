@@ -2,9 +2,15 @@
 # Copyright Contributors to the Rez Project
 
 
+from __future__ import annotations
+
 from rez.utils.formatting import StringFormatMixin, StringFormatType
 from collections import UserDict
 import sys
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Self
 
 
 class RecursiveAttribute(UserDict, StringFormatMixin):
@@ -73,7 +79,7 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
             d["data"][attr] = value
             self._reparent()
 
-    def __getitem__(self, attr):
+    def __getitem__(self, attr: str):
         return getattr(self, attr)
 
     def __str__(self) -> str:
@@ -82,7 +88,7 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
     def __repr__(self) -> str:
         return "%s(%r)" % (self.__class__.__name__, self.to_dict())
 
-    def _create_child_attribute(self, attr):
+    def _create_child_attribute(self, attr: str) -> RecursiveAttribute:
         """Override this method to create new child attributes.
 
         Returns:
@@ -100,7 +106,7 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
                 d[k] = v
         return d
 
-    def copy(self):
+    def copy(self) -> Self:
         return self.__class__(self.__dict__['data'].copy())
 
     def update(self, data):
@@ -159,7 +165,7 @@ class _Scope(RecursiveAttribute):
         if self_context:
             self_context._scope_exit(d["name"])
 
-    def _create_child_attribute(self, attr):
+    def _create_child_attribute(self, attr: str) -> RecursiveAttribute:
         return RecursiveAttribute()
 
 

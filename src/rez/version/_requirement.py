@@ -5,7 +5,7 @@ from __future__ import annotations
 from rez.version._version import Version, VersionRange
 from rez.version._util import _Common
 import re
-from typing import Iterator
+from typing import Iterator, Iterable
 
 
 class VersionedObject(_Common):
@@ -379,10 +379,10 @@ class RequirementList(_Common):
     optimal form, merging any requirements for common objects. Order of objects
     is retained.
     """
-    def __init__(self, requirements: list[Requirement]) -> None:
+    def __init__(self, requirements: Iterable[Requirement]) -> None:
         """
         Args:
-            requirements (list[Requirement]): List of requirements.
+            requirements (Iterable[Requirement]): List of requirements.
         """
         self.requirements_: list[Requirement] = []
         self.conflict_: tuple[Requirement, Requirement] | None = None

@@ -327,7 +327,7 @@ def columnise(rows: Sequence[Sequence[Any]], padding: int=2) -> list[str]:
     return strs
 
 
-def print_colored_columns(printer, rows, padding: int=2) -> None:
+def print_colored_columns(printer, rows: Sequence[tuple], padding: int=2) -> None:
     """Like `columnise`, but with colored rows.
 
     Args:

@@ -5,6 +5,8 @@
 """
 Functions that wrap readelf/patchelf utils on linux.
 """
+from __future__ import annotations
+
 import os
 from shlex import quote
 import subprocess
@@ -13,7 +15,7 @@ from rez.utils.filesystem import make_path_writable
 from rez.utils.execution import Popen
 
 
-def get_rpaths(elfpath):
+def get_rpaths(elfpath: str) -> list[str]:
     """Get rpaths/runpaths from header.
     """
 

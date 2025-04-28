@@ -196,7 +196,7 @@ class AlphanumericVersionToken(VersionToken):
     numeric_regex = re.compile("[0-9]+")
     regex = re.compile(r"[a-zA-Z0-9_]+\Z")
 
-    def __init__(self, token: str) -> None:
+    def __init__(self, token: str | None) -> None:
         if token is None:
             # this is a special case used in __next__, and subtokens is always set there
             pass
@@ -352,6 +352,8 @@ class Version(_Comparable):
         """Return :meth:`next` version. Eg, ``next(1.2)`` is ``1.2_``"""
         if self.tokens:
             other = self.copy()
+            assert other.tokens is not None, \
+                "Value should not be None because self.tokens is not None"
             tok = other.tokens.pop()
             other.tokens.append(tok.next())
             return other

@@ -10,6 +10,8 @@ import logging
 from rez.solver import SupportsWrite
 from rez.vendor import colorama
 
+from typing import Callable
+
 # Important - we don't want to init Colorama at startup,
 # because colorama prints a RESET_ALL character at exit. This in turn adds
 # unexpected output when capturing the output of a command run in a
@@ -33,7 +35,7 @@ def stream_is_tty(stream):
     return isatty and isatty()
 
 
-def critical(str_):
+def critical(str_: str) -> str:
     """ Return the string wrapped with the appropriate styling of a critical
     message.  The styling will be determined based on the rez configuration.
 
@@ -188,7 +190,7 @@ def notset(str_):
     return _color(str_)
 
 
-def _color_level(str_, level):
+def _color_level(str_, level) -> str:
     """ Return the string wrapped with the appropriate styling for the message
     level.  The styling will be determined based on the rez configuration.
 
@@ -204,7 +206,7 @@ def _color_level(str_, level):
     return _color(str_, fore_color, back_color, styles)
 
 
-def _color(str_, fore_color=None, back_color=None, styles=None):
+def _color(str_, fore_color=None, back_color=None, styles=None) -> str:
     """ Return the string wrapped with the appropriate styling escape sequences.
 
     Args:
@@ -331,7 +333,7 @@ class Printer(object):
         if hasattr(self.buf, 'flush'):
             self.buf.flush()
 
-    def get(self, msg, style=None):
+    def get(self, msg: str, style: Callable[[str], str] | None = None) -> str:
         if style and self.colorize:
             msg = style(msg)
         return msg

@@ -217,7 +217,7 @@ class PackageFilter(PackageFilterBase):
         family = rule.family()
         rules_ = rules_dict.get(family, [])
         rules_dict[family] = sorted(rules_ + [rule], key=lambda x: x.cost())
-        cached_property.uncache(self, "cost")
+        cached_property.uncache(self, "cost")  # type: ignore[attr-defined]
 
     def __str__(self) -> str:
         def sortkey(rule_items):
