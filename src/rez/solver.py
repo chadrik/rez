@@ -96,7 +96,7 @@ class SolverCallbackReturn(Enum):
 
 
 class _Printer(object):
-    def __init__(self, verbosity, buf: SupportsWrite | None = None, suppress_passive: bool = False) -> None:
+    def __init__(self, verbosity: bool, buf: SupportsWrite | None = None, suppress_passive: bool = False) -> None:
         self.verbosity = verbosity
         self.buf = buf or sys.stdout
         self.suppress_passive = suppress_passive
@@ -169,7 +169,7 @@ class _Common(object):
 class Reduction(_Common):
     """A variant was removed because its dependencies conflicted with another
     scope in the current phase."""
-    def __init__(self, name: str, version, variant_index: int | None, dependency: Requirement,
+    def __init__(self, name: str, version: Version, variant_index: int | None, dependency: Requirement,
                  conflicting_request: Requirement) -> None:
         self.name = name
         self.version = version
@@ -249,7 +249,7 @@ class TotalReduction(FailureReason):
     def description(self) -> str:
         return "A package was completely reduced: %s" % str(self)
 
-    def __eq__(self, other):
+    def __eq__(self, other: TotalReduction) -> bool:
         return (self.reductions == other.reductions)
 
     def __str__(self) -> str:
@@ -272,7 +272,7 @@ class DependencyConflicts(FailureReason):
     def description(self) -> str:
         return "The following package conflicts occurred: %s" % str(self)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: DependencyConflicts) -> bool:
         return (self.conflicts == other.conflicts)
 
     def __str__(self) -> str:
@@ -295,7 +295,7 @@ class Cycle(FailureReason):
     def description(self) -> str:
         return "A cyclic dependency was detected: %s" % str(self)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Cycle) -> bool:
         return (self.packages == other.packages)
 
     def __str__(self) -> str:
@@ -360,14 +360,14 @@ class PackageVariant(_Common):
     def get(self, pkg_name: str) -> Requirement | None:
         return self.requires_list.get(pkg_name)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: PackageVariant) -> bool:
         return (
             self.name == other.name
             and self.version == other.version
             and self.index == other.index
         )
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other: PackageVariant) -> bool:
         return (
             self.name < other.name
             and self.version < other.version
@@ -699,7 +699,7 @@ class _PackageVariantSlice(_Common):
         reductions = []
         conflict_tests = {}
 
-        def _conflicts(req_: Requirement):
+        def _conflicts(req_: Requirement) -> bool:
             # cache conflict tests, since variants often share similar requirements
             req_s = str(req)
             result = conflict_tests.get(req_s)
@@ -790,7 +790,7 @@ class _PackageVariantSlice(_Common):
         #
         self.sort_versions()
 
-        def _split(i_entry: int, n_variants: int, common_fams=None):
+        def _split(i_entry: int, n_variants: int, common_fams: set[str] | None = None) -> tuple[_PackageVariantSlice, _PackageVariantSlice]:
             # perform a split at a specific point
             result = self.entries[i_entry].split(n_variants)
 

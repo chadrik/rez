@@ -21,3 +21,18 @@ follow_imports = "silent"
 module = 'rez.utils.lint_helper'
 follow_imports = "skip"
 
+[[tool.mypy.overrides]]
+module = "rez.packages"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "rez.solver"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "rez.version._version"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "rez.version._requirement"
+disallow_untyped_defs = true
