@@ -96,7 +96,7 @@ class SolverCallbackReturn(Enum):
 
 
 class _Printer(object):
-    def __init__(self, verbosity: bool, buf: SupportsWrite | None = None, suppress_passive: bool = False) -> None:
+    def __init__(self, verbosity: int, buf: SupportsWrite | None = None, suppress_passive: bool = False) -> None:
         self.verbosity = verbosity
         self.buf = buf or sys.stdout
         self.suppress_passive = suppress_passive

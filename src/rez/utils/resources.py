@@ -90,12 +90,12 @@ class Resource(object, metaclass=LazyAttributeMeta):
     schema_error = Exception
 
     @classmethod
-    def normalize_variables(cls, variables):
+    def normalize_variables(cls, variables: dict[str, Any]) -> dict[str, Any]:
         """Give subclasses a chance to standardize values for certain variables
         """
         return variables
 
-    def __init__(self, variables=None) -> None:
+    def __init__(self, variables: dict[str, Any] | None = None) -> None:
         self.variables = self.normalize_variables(variables or {})
 
     @cached_property
@@ -104,7 +104,7 @@ class Resource(object, metaclass=LazyAttributeMeta):
         return ResourceHandle(self.key, self.variables)
 
     @cached_property
-    def _data(self):
+    def _data(self) -> dict[str, Any] | None:
         if not self.schema:
             return None
 
@@ -113,7 +113,7 @@ class Resource(object, metaclass=LazyAttributeMeta):
             print_debug("Loaded resource: %s" % str(self))
         return data
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any | None = None) -> Any | None:
         """Get the value of a resource variable."""
         return self.variables.get(key, default)
 
@@ -123,13 +123,13 @@ class Resource(object, metaclass=LazyAttributeMeta):
     def __repr__(self) -> str:
         return "%s(%r)" % (self.__class__.__name__, self.variables)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.__class__, self.handle))
 
     def __eq__(self, other):
         return (self.handle == other.handle)
 
-    def _load(self):
+    def _load(self) -> dict[str, Any]:
         """Load the data associated with the resource.
 
         You are not expected to cache this data - the resource system does this
@@ -151,22 +151,22 @@ class ResourceHandle(object):
     A handle uniquely identifies a resource. A handle can be stored and used
     with a `ResourcePool` to retrieve the same resource at a later date.
     """
-    def __init__(self, key: str, variables=None) -> None:
+    def __init__(self, key: str, variables: dict[str, Any] | None = None) -> None:
         self.key = key
         self.variables = variables or {}
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any | None = None) -> Any:
         """Get the value of a resource variable."""
         return self.variables.get(key, default)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the contents of this resource handle to a dictionary
         representation.
         """
         return dict(key=self.key, variables=self.variables)
 
     @classmethod
-    def from_dict(cls, d) -> Self:
+    def from_dict(cls, d: dict[str, Any]) -> Self:
         """Return a `ResourceHandle` instance from a serialized dict
 
         This should ONLY be used with dicts created with ResourceHandle.to_dict;
@@ -175,7 +175,7 @@ class ResourceHandle(object):
         """
         return cls(**d)
 
-    def _hashable_repr(self):
+    def _hashable_repr(self) -> tuple[str, tuple]:
         return (
             self.key,
             tuple(sorted(self.variables.items()))
@@ -205,7 +205,7 @@ class ResourcePool(object):
     resources are created via some factory class, which first checks for the
     existence of the resource before creating one from a pool.
     """
-    def __init__(self, cache_size=None) -> None:
+    def __init__(self, cache_size: int | None = None) -> None:
         self.resource_classes: dict[str, type[Resource]] = {}
         cache = lru_cache(maxsize=cache_size)
         self.cached_get_resource = cache(self._get_resource)
@@ -278,14 +278,16 @@ class ResourceWrapper(Generic[ResourceT], metaclass=AttributeForwardMeta):
         return self.resource.handle
 
     @property
-    def data(self):
+    def data(self) -> dict[str, Any] | None:
         return self.resource._data
 
-    def validated_data(self):
-        return self.resource.validated_data()
+    def validated_data(self) -> dict[str, Any] | None:
+        # provided by LazyAttributeMeta metaclass
+        return self.resource.validated_data()  # type: ignore[attr-defined]
 
     def validate_data(self) -> None:
-        self.resource.validate_data()
+        # provided by LazyAttributeMeta metaclass
+        self.resource.validate_data()  # type: ignore[attr-defined]
 
     def __eq__(self, other):
         return (
@@ -299,5 +301,5 @@ class ResourceWrapper(Generic[ResourceT], metaclass=AttributeForwardMeta):
     def __repr__(self) -> str:
         return "%s(%r)" % (self.__class__.__name__, self.resource)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.__class__, self.resource))

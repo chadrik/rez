@@ -10,7 +10,7 @@ from rez.config import config
 from rez.utils.data_utils import cached_property, cached_class_property
 from rez.version import VersionedObject, VersionRange, Requirement
 from hashlib import sha1
-from typing import Pattern, TYPE_CHECKING
+from typing import Any, Iterator, Pattern, TYPE_CHECKING, ClassVar
 import fnmatch
 import re
 
@@ -33,7 +33,7 @@ class PackageFilterBase(object):
         """
         raise NotImplementedError
 
-    def add_exclusion(self, rule: Rule):
+    def add_exclusion(self, rule: Rule) -> None:
         """Add an exclusion rule.
 
         Args:
@@ -41,7 +41,7 @@ class PackageFilterBase(object):
         """
         raise NotImplementedError
 
-    def add_inclusion(self, rule: Rule):
+    def add_inclusion(self, rule: Rule) -> None:
         """Add an inclusion rule.
 
         Args:
@@ -50,19 +50,20 @@ class PackageFilterBase(object):
         raise NotImplementedError
 
     @classmethod
-    def from_pod(cls, data):
+    def from_pod(cls, data: Any) -> Self:
         """Convert from POD types to equivalent package filter."""
         raise NotImplementedError
 
-    def to_pod(self):
+    def to_pod(self) -> Any:
         """Convert to POD type, suitable for storing in an rxt file.
 
-        Returns:
+        Return type depends on subclass implementation
             dict[str, list[str]]:
         """
         raise NotImplementedError
 
-    def iter_packages(self, name: str, range_: VersionRange | str | None = None, paths=None):
+    def iter_packages(self, name: str, range_: VersionRange | str | None = None,
+                      paths: list[str] | None = None) -> Iterator[Package]:
         """Same as :func:`~rez.packages.iter_packages`, but also applies this filter.
 
         Args:
@@ -106,14 +107,14 @@ class PackageFilter(PackageFilterBase):
     inclusion rules.
     """
     def __init__(self) -> None:
-        self._excludes = {}
-        self._includes = {}
+        self._excludes: dict[str | None, list[Rule]] = {}
+        self._includes: dict[str | None, list[Rule]] = {}
 
     def excludes(self, package: Package) -> Rule | None:
         if not self._excludes:
             return None  # quick out
 
-        def _match(rules):
+        def _match(rules: list[Rule] | None) -> Rule | None:
             if rules:
                 for rule in rules:
                     if rule.match(package):
@@ -154,20 +155,22 @@ class PackageFilter(PackageFilterBase):
         other._includes = self._includes.copy()
         return other
 
-    def __and__(self, other):
+    def __and__(self, other: PackageFilter) -> PackageFilter:
         """Combine two filters."""
         result = self.copy()
-        for rule in other._excludes.values():
-            result.add_exclusion(rule)
-        for rule in other._includes.values():
-            result.add_inclusion(rule)
+        for rules in other._excludes.values():
+            for rule in rules:
+                result.add_exclusion(rule)
+        for rules in other._includes.values():
+            for rule in rules:
+                result.add_inclusion(rule)
         return result
 
     def __bool__(self) -> bool:
         return bool(self._excludes)
 
     @cached_property
-    def cost(self):
+    def cost(self) -> float:
         """Get the approximate cost of this filter.
 
         Cost is the total cost of the exclusion rules in this filter. The cost
@@ -178,7 +181,7 @@ class PackageFilter(PackageFilterBase):
         """
         total = 0.0
         for family, rules in self._excludes.items():
-            cost = sum(x.cost() for x in rules)
+            cost: float = sum(x.cost() for x in rules)
             if family:
                 cost = cost / float(10)
             total += cost
@@ -202,7 +205,7 @@ class PackageFilter(PackageFilterBase):
                 func(rule)
         return f
 
-    def to_pod(self) -> dict:
+    def to_pod(self) -> dict[str, list[str]]:
         data = {}
         for namespace, dict_ in (("excludes", self._excludes),
                                  ("includes", self._includes)):
@@ -213,18 +216,18 @@ class PackageFilter(PackageFilterBase):
                 data[namespace] = rules
         return data
 
-    def _add_rule(self, rules_dict, rule) -> None:
+    def _add_rule(self, rules_dict: dict[str | None, list[Rule]], rule: Rule) -> None:
         family = rule.family()
         rules_ = rules_dict.get(family, [])
         rules_dict[family] = sorted(rules_ + [rule], key=lambda x: x.cost())
         cached_property.uncache(self, "cost")  # type: ignore[attr-defined]
 
     def __str__(self) -> str:
-        def sortkey(rule_items):
+        def sortkey(rule_items: tuple[str | None, list[Rule]]) -> tuple[str, list[Rule]]:
             family, rules = rule_items
             if family is None:
                 return ("", rules)
-            return rule_items
+            return family, rules
 
         return str((sorted(self._excludes.items(), key=sortkey),
                     sorted(self._includes.items(), key=sortkey)))
@@ -356,12 +359,12 @@ class Rule(object):
         """
         return self._family
 
-    def cost(self):
+    def cost(self) -> int:
         """Relative cost of filter. Cheaper filters are applied first."""
         raise NotImplementedError
 
     @classmethod
-    def parse_rule(cls, txt: str):
+    def parse_rule(cls, txt: str) -> Rule:
         """Parse a rule from a string.
 
         See :data:`package_filter` for an overview of valid strings.
@@ -401,7 +404,7 @@ class Rule(object):
         return rule
 
     @classmethod
-    def _parse(cls, txt: str):
+    def _parse(cls, txt: str) -> Rule:
         """Create a rule from a string.
 
         Returns:
@@ -411,7 +414,7 @@ class Rule(object):
         raise NotImplementedError
 
     @classmethod
-    def _parse_label(cls, txt: str):
+    def _parse_label(cls, txt: str) -> tuple[str | None, str]:
         m = cls.label_re.match(txt)
         if m:
             label, txt = m.groups()
@@ -429,13 +432,16 @@ class Rule(object):
     def __repr__(self) -> str:
         return str(self)
 
-    family_re = re.compile("[^*?]+" + VersionedObject.sep_regex_str)
-    label_re = re.compile("^([^(]+)\\(([^\\(\\)]+)\\)$")
+    family_re: ClassVar[re.Pattern[str]] = re.compile("[^*?]+" + VersionedObject.sep_regex.pattern)
+    label_re: ClassVar[re.Pattern[str]] = re.compile("^([^(]+)\\(([^\\(\\)]+)\\)$")
 
 
 class RegexRuleBase(Rule):
     regex: Pattern[str]
     txt: str
+
+    def __init__(self, s: str) -> None:
+        pass
 
     def match(self, package: Package) -> bool:
         return bool(self.regex.match(package.qualified_name))
@@ -500,7 +506,7 @@ class RangeRule(Rule):
         self._requirement = requirement
         self._family = requirement.name
 
-    def match(self, package) -> bool:
+    def match(self, package: Package) -> bool:
         o = VersionedObject.construct(package.name, package.version)
         return not self._requirement.conflicts_with(o)
 
@@ -540,7 +546,7 @@ class TimestampRule(Rule):
     """
     name = "timestamp"
 
-    def __init__(self, timestamp: int, family=None, reverse: bool = False,
+    def __init__(self, timestamp: int, family: str | None = None, reverse: bool = False,
                  match_untimestamped: bool = False) -> None:
         """Create a timestamp rule.
 
@@ -570,15 +576,15 @@ class TimestampRule(Rule):
         return 1000
 
     @classmethod
-    def after(cls, timestamp, family=None) -> Self:
+    def after(cls, timestamp: int, family: str | None = None) -> Self:
         return cls(timestamp, family=family, reverse=True)
 
     @classmethod
-    def before(cls, timestamp, family=None) -> Self:
+    def before(cls, timestamp: int, family: str | None = None) -> Self:
         return cls(timestamp, family=family)
 
     @classmethod
-    def _parse(cls, txt) -> Self:
+    def _parse(cls, txt: str) -> Self:
         label, txt = Rule._parse_label(txt)
         if ':' in txt:
             family, txt = txt.split(':', 1)

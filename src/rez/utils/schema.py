@@ -14,7 +14,7 @@ from rez.config import Validatable
 Required = Schema
 
 
-def schema_keys(schema):
+def schema_keys(schema) -> set[str]:
     """Get the string values of keys in a dict-based schema.
 
     Non-string keys are ignored.

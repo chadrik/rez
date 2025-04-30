@@ -8,7 +8,8 @@ from rez.utils.formatting import StringFormatMixin, StringFormatType
 from collections import UserDict
 import sys
 
-from typing import TYPE_CHECKING
+from typing import cast, Any, TYPE_CHECKING, ClassVar, NoReturn
+
 if TYPE_CHECKING:
     from typing import Self
 
@@ -64,7 +65,7 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
         attr_.__dict__["pending"] = (attr, self)
         return attr_
 
-    def __setattr__(self, attr, value) -> None:
+    def __setattr__(self, attr: str, value: Any) -> None:
         d = self.__dict__
         if d["read_only"]:
             if attr in d["data"]:
@@ -79,7 +80,7 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
             d["data"][attr] = value
             self._reparent()
 
-    def __getitem__(self, attr: str):
+    def __getitem__(self, attr: str) -> Any:
         return getattr(self, attr)
 
     def __str__(self) -> str:
@@ -96,7 +97,7 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
         """
         return self.__class__()
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Get an equivalent dict representation."""
         d = {}
         for k, v in self.__dict__["data"].items():
@@ -109,13 +110,13 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
     def copy(self) -> Self:
         return self.__class__(self.__dict__['data'].copy())
 
-    def update(self, data):
+    def update(self, data: dict[str, Any]) -> None:  # type: ignore[override]
         """Dict-like update operation."""
         if self.__dict__["read_only"]:
             raise AttributeError("read-only, cannot be updated")
         self._update(data)
 
-    def _update(self, data) -> None:
+    def _update(self, data: dict[str, Any]) -> None:
         for k, v in data.items():
             if isinstance(v, dict):
                 v = RecursiveAttribute(v)
@@ -131,18 +132,18 @@ class RecursiveAttribute(UserDict, StringFormatMixin):
 
 
 class _Scope(RecursiveAttribute):
-    def __init__(self, name=None, context=None) -> None:
+    def __init__(self, name: str | None = None, context: ScopeContext | None = None) -> None:
         RecursiveAttribute.__init__(self)
         self.__dict__.update(dict(name=name,
                                   context=context,
                                   locals=None))
 
-    def __enter__(self):
+    def __enter__(self) -> _Scope:
         locals_ = sys._getframe(1).f_locals
         self.__dict__["locals"] = locals_.copy()
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args: Any) -> None:
         # find what's changed
         updates = {}
         d = self.__dict__
@@ -210,7 +211,7 @@ class ScopeContext(object):
         self.scopes = {}
         self.scope_stack = [_Scope()]
 
-    def __call__(self, name):
+    def __call__(self, name: str) -> _Scope:
         path = tuple([x.name for x in self.scope_stack[1:]] + [name])
         if path in self.scopes:
             scope = self.scopes[path]
@@ -221,14 +222,14 @@ class ScopeContext(object):
         self.scope_stack.append(scope)
         return scope
 
-    def _scope_exit(self, name) -> None:
+    def _scope_exit(self, name: str) -> None:
         scope = self.scope_stack.pop()
         assert self.scope_stack
         assert name == scope.name
-        data = {scope.name: scope.to_dict()}
+        data = {cast(str, scope.name): scope.to_dict()}
         self.scope_stack[-1].update(data)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Get an equivalent dict representation."""
         return self.scope_stack[-1].to_dict()
 
@@ -237,7 +238,7 @@ class ScopeContext(object):
         return "%r" % (tuple(names),)
 
 
-def scoped_formatter(**objects) -> RecursiveAttribute:
+def scoped_formatter(**objects: Any) -> RecursiveAttribute:
     """Format a string with respect to a set of objects' attributes.
 
     Use this rather than `scoped_format` when you need to reuse the formatter.
@@ -245,7 +246,7 @@ def scoped_formatter(**objects) -> RecursiveAttribute:
     return RecursiveAttribute(objects, read_only=True)
 
 
-def scoped_format(txt: str, **objects) -> str:
+def scoped_format(txt: str, **objects: Any) -> str:
     """Format a string with respect to a set of objects' attributes.
 
     Example:

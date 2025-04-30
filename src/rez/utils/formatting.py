@@ -12,12 +12,16 @@ from rez.version import Requirement
 from rez.exceptions import PackageRequestError
 from pprint import pformat
 from enum import Enum
-from typing import Any, Sequence, Mapping
+from typing import Any, Sequence, Mapping, TYPE_CHECKING
 import math
 import os
 import os.path
 import re
 import time
+
+if TYPE_CHECKING:
+    from rez.rex import RexExecutor
+    from rez.utils import colorize
 
 
 PACKAGE_NAME_REGSTR = r"[a-zA-Z_0-9](\.?[a-zA-Z0-9_]+)*"
@@ -37,7 +41,7 @@ invalid_package_names = (
 )
 
 
-def is_valid_package_name(name, raise_error: bool = False):
+def is_valid_package_name(name: str, raise_error: bool = False) -> bool:
     """Test the validity of a package name string.
 
     Args:
@@ -47,7 +51,7 @@ def is_valid_package_name(name, raise_error: bool = False):
     Returns:
         bool.
     """
-    is_valid = (
+    is_valid = bool(
         PACKAGE_NAME_REGEX.match(name)
         and name not in invalid_package_names
     )
@@ -71,7 +75,7 @@ class PackageRequest(Requirement):
         >>> print(pr.name, pr.range)
         foo 1.3+
     """
-    def __init__(self, s) -> None:
+    def __init__(self, s: str) -> None:
         super(PackageRequest, self).__init__(s)
 
         # detect ephemeral package
@@ -99,7 +103,8 @@ class ObjectStringFormatter(Formatter):
     empty = StringFormatType.empty
     unchanged = StringFormatType.unchanged
 
-    def __init__(self, instance, pretty: bool = False, expand: StringFormatType = StringFormatType.error) -> None:
+    def __init__(self, instance: Any, pretty: bool = False,
+                 expand: StringFormatType = StringFormatType.error) -> None:
         """Create a formatter.
 
         Args:
@@ -113,7 +118,7 @@ class ObjectStringFormatter(Formatter):
         self.pretty = pretty
         self.expand = expand
 
-    def convert_field(self, value, conversion):
+    def convert_field(self, value: Any, conversion: str | None) -> Any:
         if self.pretty:
             if value is None:
                 return ''
@@ -122,7 +127,7 @@ class ObjectStringFormatter(Formatter):
 
         return Formatter.convert_field(self, value, conversion)
 
-    def get_field(self, field_name, args, kwargs):
+    def get_field(self, field_name: str, args: Sequence[Any], kwargs: Mapping[str, Any]) -> Any:
         if self.expand == StringFormatType.error:
             return Formatter.get_field(self, field_name, args, kwargs)
         try:
@@ -130,7 +135,7 @@ class ObjectStringFormatter(Formatter):
         except (AttributeError, KeyError, TypeError):
             reg = re.compile(r"[^\.\[]+")
             try:
-                key = reg.match(field_name).group()
+                key = reg.match(field_name).group()  # type: ignore[union-attr]
             except:
                 key = field_name
             if self.expand == StringFormatType.empty:
@@ -138,7 +143,7 @@ class ObjectStringFormatter(Formatter):
             else:  # StringFormatType.unchanged
                 return ("{%s}" % field_name, key)
 
-    def get_value(self, key, args, kwds):
+    def get_value(self, key: int | str, args: Sequence[Any], kwds: Mapping[str, Any]) -> Any:
         if isinstance(key, str):
             if key:
                 try:
@@ -170,7 +175,8 @@ class StringFormatMixin(object):
     format_expand = StringFormatType.error
     format_pretty = True
 
-    def format(self, s, pretty=None, expand=None):
+    def format(self, s: str, pretty: bool | None = None,
+               expand: StringFormatType | None = None) -> str:
         """Format a string.
 
         Args:
@@ -194,7 +200,7 @@ class StringFormatMixin(object):
         return formatter.format(s)
 
 
-def expand_abbreviations(txt, fields):
+def expand_abbreviations(txt: str, fields: list[str]) -> str:
     """Expand abbreviations in a format string.
 
     If an abbreviation does not match a field, or matches multiple fields, it
@@ -213,7 +219,7 @@ def expand_abbreviations(txt, fields):
     Returns:
         Expanded string.
     """
-    def _expand(matchobj) -> str:
+    def _expand(matchobj: re.Match[str]) -> str:
         s = matchobj.group("var")
         if s not in fields:
             matches = [x for x in fields if x.startswith(s)]
@@ -261,13 +267,13 @@ def expandvars(text: str, environ: Mapping[str, str] | None = None) -> str:
     return text
 
 
-def indent(txt: str):
+def indent(txt: str) -> str:
     """Indent the given text by 4 spaces."""
     lines = (("    " + x) for x in txt.split('\n'))
     return '\n'.join(lines)
 
 
-def dict_to_attributes_code(dict_):
+def dict_to_attributes_code(dict_: dict) -> str:
     """Given a nested dict, generate a python code equivalent.
 
     Example:
@@ -327,7 +333,7 @@ def columnise(rows: Sequence[Sequence[Any]], padding: int=2) -> list[str]:
     return strs
 
 
-def print_colored_columns(printer, rows: Sequence[tuple], padding: int=2) -> None:
+def print_colored_columns(printer: colorize.Printer, rows: Sequence[tuple], padding: int=2) -> None:
     """Like `columnise`, but with colored rows.
 
     Args:
@@ -352,7 +358,7 @@ time_divs = (
     (1, "seconds", 60))
 
 
-def readable_time_duration(secs):
+def readable_time_duration(secs: int) -> str:
     """Convert number of seconds into human readable form, eg '3.2 hours'.
     """
     return _readable_units(secs, time_divs, True)
@@ -366,7 +372,7 @@ memory_divs = (
     (1, "bytes", 1024))
 
 
-def readable_memory_size(bytes_):
+def readable_memory_size(bytes_: int) -> str:
     """Convert number of bytes into human-readable form.
 
     This method rounds to 1 decimal place eg '1.2 Kb'.
@@ -374,7 +380,8 @@ def readable_memory_size(bytes_):
     return _readable_units(bytes_, memory_divs)
 
 
-def _readable_units(value, divs, plural_aware: bool = False):
+def _readable_units(value: int, divs: tuple[tuple[int, str, int], ...],
+                    plural_aware: bool = False) -> str:
     if value == 0:
         unit = divs[-1][1]
         return "0 %s" % unit
@@ -399,7 +406,7 @@ def _readable_units(value, divs, plural_aware: bool = False):
     return txt
 
 
-def get_epoch_time_from_str(s):
+def get_epoch_time_from_str(s: str) -> int:
     """Convert a string into epoch time. Examples of valid strings:
 
         1418350671  # already epoch time
@@ -432,7 +439,7 @@ def get_epoch_time_from_str(s):
 positional_suffix = ("th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th")
 
 
-def positional_number_string(n) -> str:
+def positional_number_string(n: int) -> str:
     """Print the position string equivalent of a positive integer. Examples:
 
         0: zeroeth
@@ -489,7 +496,7 @@ def expanduser(path: str) -> str:
     else:
         userhome = os.path.expanduser('~')
 
-    def _expanduser(path):
+    def _expanduser(path: str) -> str:
         return EXPANDUSER_RE.sub(
             lambda m: m.groups()[0] + userhome + m.groups()[1],
             path)
@@ -501,7 +508,7 @@ def expanduser(path: str) -> str:
     return os.path.normpath(_expanduser(path))
 
 
-def as_block_string(txt) -> str:
+def as_block_string(txt: str) -> str:
     """Return a string formatted as a python block comment string, like the one
     you're currently reading. Special characters are escaped if necessary.
     """
@@ -520,7 +527,7 @@ _header_br = '#' * 80
 _header_br_minor = '-' * 80
 
 
-def header_comment(executor, txt: str) -> None:
+def header_comment(executor: RexExecutor, txt: str) -> None:
     """Convenience for creating header-like comment in a rex executor.
 
     Args:
@@ -534,7 +541,7 @@ def header_comment(executor, txt: str) -> None:
     executor.comment(_header_br)
 
 
-def minor_header_comment(executor, txt: str) -> None:
+def minor_header_comment(executor: RexExecutor, txt: str) -> None:
     executor.comment("")
     executor.comment(txt)
     executor.comment(_header_br_minor)

@@ -61,12 +61,13 @@ class PackageOrder(object):
     name: str
     _packages: list[str]
 
-    def __init__(self, packages: Iterable[str] | None = None) -> None:
+    def __init__(self, packages: list[str] | None = None) -> None:
         """
         Args:
             packages: If not provided, PackageOrder applies to all packages.
         """
-        self.packages = packages
+        # TYPING: odd behavior where mypy disregards the property setter
+        self.packages = packages  # type: ignore[assignment]
 
     @property
     def packages(self) -> list[str]:
@@ -129,7 +130,9 @@ class PackageOrder(object):
         key = key or (lambda x: x)
         return key(item).name
 
-    def sort_key(self, package_name: str, version_like) -> SupportsLessThan:
+    def sort_key(self, package_name: str,
+                 version_like: Version | _LowerBound | _UpperBound | _Bound | VersionRange | None
+                 ) -> SupportsLessThan:
         """Returns a sort key usable for sorting packages within the same family
 
         Args:
@@ -247,7 +250,7 @@ class SortedOrder(PackageOrder):
     """
     name = "sorted"
 
-    def __init__(self, descending: bool, packages=None) -> None:
+    def __init__(self, descending: bool, packages: list[str] | None = None) -> None:
         super().__init__(packages)
         self.descending = descending
 
@@ -422,7 +425,7 @@ class VersionSplitPackageOrder(PackageOrder):
     """
     name = "version_split"
 
-    def __init__(self, first_version: Version, packages=None) -> None:
+    def __init__(self, first_version: Version, packages: list[str] | None = None) -> None:
         """Create a reorderer.
 
         Args:
@@ -510,7 +513,7 @@ class TimestampPackageOrder(PackageOrder):
     """
     name = "soft_timestamp"
 
-    def __init__(self, timestamp: int, rank: int = 0, packages=None) -> None:
+    def __init__(self, timestamp: int, rank: int = 0, packages: list[str] | None = None) -> None:
         """Create a reorderer.
 
         Args:
@@ -528,7 +531,7 @@ class TimestampPackageOrder(PackageOrder):
         self._cached_first_after = {}
         self._cached_sort_key = {}
 
-    def _get_first_after(self, package_family: str):
+    def _get_first_after(self, package_family: str) -> Version | None:
         """Get the first package version that is after the timestamp"""
         try:
             first_after = self._cached_first_after[package_family]
@@ -537,7 +540,7 @@ class TimestampPackageOrder(PackageOrder):
             self._cached_first_after[package_family] = first_after
         return first_after
 
-    def _calc_first_after(self, package_family: str):
+    def _calc_first_after(self, package_family: str) -> Version | None:
         descending = sorted(iter_packages(package_family),
                             key=lambda p: p.version,
                             reverse=True)
@@ -571,7 +574,7 @@ class TimestampPackageOrder(PackageOrder):
 
         return first_after
 
-    def _calc_sort_key(self, package_name: str, version):
+    def _calc_sort_key(self, package_name: str, version: Version) -> SupportsLessThan:
         first_after = self._get_first_after(package_name)
         if first_after is None:
             # all packages are before T
@@ -738,7 +741,7 @@ def from_pod(data: dict[str, Any]) -> PackageOrder:
         return cls.from_pod(data_)
 
 
-def get_orderer(package_name: str, orderers: PackageOrderList | dict[str, PackageOrder] | None = None):
+def get_orderer(package_name: str, orderers: PackageOrderList | dict[str, PackageOrder] | None = None) -> PackageOrder:
     if orderers is None:
         orderers = PackageOrderList.singleton
     orderer = orderers.get(package_name)
