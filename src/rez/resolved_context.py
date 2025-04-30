@@ -35,7 +35,7 @@ from rez.exceptions import ResolvedContextError, PackageCommandError, \
 from rez.utils.graph_utils import write_dot, write_compacted, \
     read_graph_from_string
 from rez.utils.resolve_graph import failure_detail_from_graph
-from rez.version import VersionRange
+from rez.version import Version, VersionRange
 from rez.version import Requirement
 from rez.vendor import yaml
 from rez.utils.yaml import dump_yaml
@@ -44,7 +44,8 @@ from rez.utils.platform_ import platform_
 from contextlib import contextmanager
 from functools import wraps
 from enum import Enum
-from typing import cast, Any, Callable, Iterable, Mapping, NoReturn, Sequence, TypeVar, TYPE_CHECKING
+from typing import cast, Any, Callable, Iterable, Iterator, Mapping, NoReturn, Sequence, TypeVar, \
+    TYPE_CHECKING, overload
 import getpass
 import json
 import socket
@@ -56,10 +57,13 @@ import os.path
 
 if TYPE_CHECKING:
     from typing import Literal  # not available in typing module until 3.8
-    from rez.utils.typing import SupportsWrite
+    from rez.utils.typing import SupportsWrite, SupportsRead
     from rez.solver import SolverState
     from rez.package_resources import VariantResource
+    from rez.vendor.pygraph.classes.digraph import digraph
+    from subprocess import Popen
 
+T = TypeVar("T")
 CallableT = TypeVar("CallableT", bound=Callable)
 
 
@@ -100,13 +104,13 @@ class PatchLock(Enum):
 
     __order__ = "no_lock,lock_2,lock_3,lock_4,lock"
 
-    def __init__(self, description, rank) -> None:
+    def __init__(self, description: str, rank: int) -> None:
         self.description = description
         self.rank = rank
 
 
 def get_lock_request(name: str,
-                     version, patch_lock: PatchLock,
+                     version: Version, patch_lock: PatchLock,
                      weak: bool = True) -> PackageRequest | None:
     """Given a package and patch lock, return the equivalent request.
 
@@ -138,7 +142,7 @@ def get_lock_request(name: str,
 
 def _on_success(fn: CallableT) -> CallableT:
     @wraps(fn)
-    def _check(self, *nargs, **kwargs):
+    def _check(self: ResolvedContext, *nargs: Any, **kwargs: Any) -> Any:
         if self.status_ == ResolverStatus.solved:
             return fn(self, *nargs, **kwargs)
         else:
@@ -166,7 +170,7 @@ class ResolvedContext(object):
     local = threading.local()
 
     class Callback(object):
-        def __init__(self, max_fails: int, time_limit,
+        def __init__(self, max_fails: int, time_limit: int,
                      callback: Callable[[SolverState], tuple[SolverCallbackReturn, str]] | None,
                      buf: SupportsWrite | None = None) -> None:
             self.max_fails = max_fails
@@ -318,7 +322,7 @@ class ResolvedContext(object):
         self._resolved_ephemerals = None
         self.failure_description: str | None = None
         self.graph_string: str | None = None
-        self.graph_ = None
+        self.graph_: digraph | None = None
         self.from_cache: bool | None = None
 
         # stats
@@ -340,7 +344,7 @@ class ResolvedContext(object):
                                   time_limit=time_limit,
                                   callback=callback)
 
-        def _package_load_callback(package) -> None:
+        def _package_load_callback(package: Package) -> None:
             if package_load_callback:
                 package_load_callback(package)
             self.num_loaded_packages += 1
@@ -561,8 +565,9 @@ class ResolvedContext(object):
         return self.from_dict(d)
 
     # TODO: deprecate in favor of patch() method
-    def get_patched_request(self, package_requests=None,
-                            package_subtractions=None, strict: bool = False, rank: int=0
+    def get_patched_request(self, package_requests: list[PackageRequest] | None = None,
+                            package_subtractions: list[str] | None = None,
+                            strict: bool = False, rank: int = 0
                             ) -> list[Requirement | PackageRequest | str]:
         """Get a 'patched' request.
 
@@ -605,7 +610,6 @@ class ResolvedContext(object):
             request: list[Requirement | PackageRequest] = []
             for variant in self.resolved_packages:
                 req = PackageRequest(variant.qualified_package_name)
-                request.append(req)
         else:
             request = self.requested_packages()[:]
 
@@ -648,10 +652,10 @@ class ResolvedContext(object):
             request += request_
 
         # add rank limiters
-        if not strict and rank > 1:
+        if package_requests and not strict and rank > 1:
             overrides = set(x.name for x in package_requests if not x.conflict)
             rank_limiters = []
-            for variant in self.resolved_packages:
+            for variant in self._solved_value(self.resolved_packages):
                 if variant.name not in overrides:
                     if len(variant.version) >= rank:
                         version = variant.version.trim(rank - 1)
@@ -662,7 +666,15 @@ class ResolvedContext(object):
         else:
             return cast("list[Requirement | PackageRequest | str]", request)
 
-    def graph(self, as_dot: bool = False):
+    @overload
+    def graph(self, as_dot: Literal[True]) -> str | None:
+        pass
+
+    @overload
+    def graph(self, as_dot: Literal[False] = False) -> digraph | None:
+        pass
+
+    def graph(self, as_dot: bool = False) -> str | digraph | None:
         """Get the resolve graph.
 
         Args:
@@ -677,7 +689,7 @@ class ResolvedContext(object):
             return None
 
         if not as_dot:
-            if self.graph_ is None:
+            if self.graph_ is None and self.graph_string is not None:
                 # reads either dot format or our compact format
                 self.graph_ = read_graph_from_string(self.graph_string)
             return self.graph_
@@ -690,6 +702,9 @@ class ResolvedContext(object):
                 # old rez contexts where the graph is not stored in the newer
                 # compact format.
                 return self.graph_string
+
+        if not self.graph_:
+            return None
 
         return write_dot(self.graph_)
 
@@ -745,7 +760,7 @@ class ResolvedContext(object):
         return context
 
     @classmethod
-    def read_from_buffer(cls, buf, identifier_str: str | None = None) -> ResolvedContext:
+    def read_from_buffer(cls, buf: SupportsRead, identifier_str: str | None = None) -> ResolvedContext:
         """Load the context from a buffer."""
         try:
             return cls._read_from_buffer(buf, identifier_str)
@@ -856,7 +871,7 @@ class ResolvedContext(object):
         """
         _pr = Printer(buf)
 
-        def _rt(t):
+        def _rt(t: float) -> str:
             if verbosity:
                 s = time.strftime("%a %b %d %H:%M:%S %Z %Y", time.localtime(t))
                 return s + " (%d)" % int(t)
@@ -951,7 +966,7 @@ class ResolvedContext(object):
             location = None
 
             # check for retargeted variant root (ie package caching)
-            pkg_root = pkg.root
+            pkg_root: str = pkg.root
 
             if is_current:
                 uname = pkg.name.upper().replace('.', '_')
@@ -1091,8 +1106,16 @@ class ResolvedContext(object):
 
         print('\n'.join(columnise(rows)))
 
+    @overload
+    def get_dependency_graph(self, as_dot: Literal[False]) -> digraph:
+        pass
+
+    @overload
+    def get_dependency_graph(self, as_dot: Literal[True]) -> str:
+        pass
+
     @_on_success
-    def get_dependency_graph(self, as_dot: bool = False):
+    def get_dependency_graph(self, as_dot: bool = False) -> digraph | str:
         """Generate the dependency graph.
 
         The dependency graph is a simpler subset of the resolve graph. It
@@ -1246,7 +1269,7 @@ class ResolvedContext(object):
     @_on_success
     def get_shell_code(self, shell: str | None = None,
                        parent_environ: Mapping[str, str] | None = None,
-                       style=OutputStyle.file) -> str:
+                       style: OutputStyle = OutputStyle.file) -> str:
         """Get the shell code resulting from intepreting this context.
 
         Args:
@@ -1299,7 +1322,8 @@ class ResolvedContext(object):
         interpreter.apply_environ()
 
     @_on_success
-    def which(self, cmd, parent_environ: Mapping[str, str] | None = None, fallback: bool = False):
+    def which(self, cmd: str, parent_environ: Mapping[str, str] | None = None,
+              fallback: bool = False) -> str | None:
         """Find a program in the resolved environment.
 
         Args:
@@ -1319,7 +1343,9 @@ class ResolvedContext(object):
         return path
 
     @_on_success
-    def execute_command(self, args, parent_environ: dict[str, str] | None = None, **Popen_args):
+    def execute_command(self, args: str | Iterable[str],
+                        parent_environ: dict[str, str] | None = None,
+                        **Popen_args: Any) -> Popen:
         """Run a command within a resolved context.
 
         This applies the context to a python environ dict, then runs a
@@ -1359,7 +1385,8 @@ class ResolvedContext(object):
     def execute_rex_code(self, code: str,
                          filename: str | None = None,
                          shell: str | None = None,
-                         parent_environ: Mapping[str, str] | None = None, **Popen_args):
+                         parent_environ: Mapping[str, str] | None = None,
+                         **Popen_args: Any) -> Popen:
         """Run some rex code in the context.
 
         Note:
@@ -1377,7 +1404,7 @@ class ResolvedContext(object):
         Returns:
             subprocess.Popen: Subprocess object for the shell process.
         """
-        def _actions_callback(executor) -> None:
+        def _actions_callback(executor: RexExecutor) -> None:
             executor.execute_code(code, filename=filename)
 
         return self.execute_shell(shell=shell,
@@ -1399,8 +1426,10 @@ class ResolvedContext(object):
                       block: bool | None = None,
                       actions_callback: Callable[[RexExecutor], Any] | None = None,
                       post_actions_callback: Callable[[RexExecutor], Any] | None = None,
-                      context_filepath=None, start_new_session: bool = False, detached: bool = False,
-                      pre_command=None, **Popen_args):
+                      context_filepath: str | None = None,
+                      start_new_session: bool = False, detached: bool = False,
+                      pre_command: str | list[str] | None = None,
+                      **Popen_args: Any) -> Popen:
         """Spawn a possibly-interactive shell.
 
         Args:
@@ -1521,7 +1550,8 @@ class ResolvedContext(object):
                            **Popen_args)
         if block:
             stdout, stderr = p.communicate()
-            return p.returncode, stdout, stderr
+            # FIXME: make overload for this
+            return p.returncode, stdout, stderr  # type: ignore[return-value]
         else:
             return p
 
@@ -1555,7 +1585,7 @@ class ResolvedContext(object):
         """
         data: dict[str, Any] = {}
 
-        def _add(field) -> bool:
+        def _add(field: str) -> bool:
             return (fields is None or field in fields)
 
         if _add("resolved_packages"):
@@ -1655,7 +1685,7 @@ class ResolvedContext(object):
             `ResolvedContext` object.
         """
         # check serialization version
-        def _print_version(value):
+        def _print_version(value: Iterable[int]) -> str:
             return '.'.join(str(x) for x in value)
 
         toks = str(d["serialize_version"]).split('.')
@@ -1667,7 +1697,7 @@ class ResolvedContext(object):
             if identifier_str:
                 msg.append("in %s" % identifier_str)
             msg.append("was written by a newer version of Rez. The load may "
-                       "fail (serialize version %d > %d)"
+                       "fail (serialize version %s > %s)"
                        % (_print_version(load_ver), _print_version(curr_ver)))
             print(' '.join(msg), file=sys.stderr)
 
@@ -1745,7 +1775,7 @@ class ResolvedContext(object):
 
         data = d.get("package_orderers")
         if data:
-            r.package_orderers = [package_order.from_pod(x) for x in data]
+            r.package_orderers = PackageOrderList([package_order.from_pod(x) for x in data])
         else:
             r.package_orderers = None
 
@@ -1816,7 +1846,7 @@ class ResolvedContext(object):
 
     @classmethod
     @contextmanager
-    def _detect_bundle(cls, path: str):
+    def _detect_bundle(cls, path: str) -> Iterator[None]:
         bundle_path = None
         base_dir = os.path.dirname(os.path.abspath(path))
         bundle_filepath = os.path.join(base_dir, "bundle.yaml")
@@ -1839,11 +1869,11 @@ class ResolvedContext(object):
                 pass
 
     @classmethod
-    def _get_bundle_path(cls):
+    def _get_bundle_path(cls) -> str | None:
         return getattr(cls.local, "bundle_path", None)
 
     @classmethod
-    def _adjust_variant_for_bundling(cls, handle, out) -> None:
+    def _adjust_variant_for_bundling(cls, handle: dict, out: bool) -> None:
         """
         Deals with making variant pkg repo ref relative/nonrelative to take
         bundling into account.
@@ -1934,8 +1964,8 @@ class ResolvedContext(object):
         data.update(config.context_tracking_extra_fields or {})
 
         # remove fields with unexpanded env-vars, or empty string
-        def _del(value):
-            return (
+        def _del(value: object) -> bool:
+            return bool(
                 isinstance(value, str)
                 and (not value or ENV_VAR_REGEX.search(value))
             )
@@ -1979,7 +2009,7 @@ class ResolvedContext(object):
             )
 
     @classmethod
-    def _read_from_buffer(cls, buf, identifier_str: str | None = None) -> ResolvedContext:
+    def _read_from_buffer(cls, buf: SupportsRead, identifier_str: str | None = None) -> ResolvedContext:
         content = buf.read()
 
         if content.startswith('{'):  # assume json content
@@ -1991,7 +2021,7 @@ class ResolvedContext(object):
         return context
 
     @classmethod
-    def _load_error(cls, e, path: str | None = None) -> NoReturn:
+    def _load_error(cls, e: Exception, path: str | None = None) -> NoReturn:
         exc_name = e.__class__.__name__
         msg = "Failed to load context"
         if path:
@@ -2028,7 +2058,7 @@ class ResolvedContext(object):
     def _execute(self, executor: RexExecutor) -> None:
         """Bind various info to the execution context
         """
-        def normalized(path):
+        def normalized(path: str) -> str:
             return executor.normalize_path(path)
 
         resolved_pkgs = self.resolved_packages or []

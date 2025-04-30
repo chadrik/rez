@@ -323,7 +323,7 @@ class LazySingleton(Generic[T]):
         return self.instance
 
 
-class AttrDictWrapper(MutableMapping):
+class AttrDictWrapper(MutableMapping[str, Any]):
     """Wrap a custom dictionary with attribute-based lookup::
 
         >>> d = {'one': 1}
@@ -339,10 +339,10 @@ class AttrDictWrapper(MutableMapping):
         self.__dict__['_data'] = {} if data is None else data
 
     @property
-    def _data(self):
+    def _data(self) -> dict:
         return self.__dict__['_data']
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         if attr.startswith('__') and attr.endswith('__'):
             d = self.__dict__
         else:

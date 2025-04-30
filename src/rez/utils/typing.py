@@ -23,3 +23,7 @@ class SupportsLessThan(Protocol):
 class SupportsWrite(Protocol):
     def write(self, __s: str) -> object:
         pass
+
+class SupportsRead(Protocol):
+    def read(self) -> str:
+        pass

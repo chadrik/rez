@@ -135,7 +135,7 @@ class Resolver(object):
         self.resolved_packages_: list[Variant] | None = None
         self.resolved_ephemerals_: list[Requirement] | None = None
         self.failure_description: str | None = None
-        self.graph_ = None
+        self.graph_: digraph | None = None
         self.from_cache = False
         self.memcached_servers = config.memcached_uri if config.resolve_caching else None
 
@@ -193,7 +193,7 @@ class Resolver(object):
         return self.resolved_ephemerals_
 
     @property
-    def graph(self):
+    def graph(self) -> digraph | None:
         """Return the resolve graph.
 
         The resolve graph shows unsuccessful as well as successful resolves.
@@ -203,7 +203,7 @@ class Resolver(object):
         """
         return self.graph_
 
-    def _get_variant(self, variant_handle) -> Variant:
+    def _get_variant(self, variant_handle: ResourceHandle | dict) -> Variant:
         return get_variant(variant_handle, context=self.context)
 
     def _get_cached_solve(self) -> SolverDict | None:

@@ -645,7 +645,7 @@ class Config(object, metaclass=LazyAttributeMeta):
         return get_debug_printer(enabled)
 
     @cached_property
-    def sourced_filepaths(self):
+    def sourced_filepaths(self) -> list[str]:
         """Get the list of files actually sourced to create the config.
 
         Note:
@@ -661,7 +661,7 @@ class Config(object, metaclass=LazyAttributeMeta):
         return self._sourced_filepaths
 
     @cached_property
-    def plugins(self):
+    def plugins(self) -> _PluginConfigs:
         """Plugin settings are loaded lazily, to avoid loading the plugins
         until necessary."""
         plugin_data = self._data.get("plugins", {})
@@ -829,7 +829,7 @@ class _PluginConfigs(object):
         raise AttributeError("'%s' object attribute '%s' is read-only"
                              % (self.__class__.__name__, attr))
 
-    def __getattr__(self, attr: str) -> Any:
+    def __getattr__(self, attr: str) -> RO_AttrDictWrapper:
         if attr in self.__dict__:
             return self.__dict__[attr]
 

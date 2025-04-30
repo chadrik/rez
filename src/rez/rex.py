@@ -698,7 +698,7 @@ class Python(ActionInterpreter):
             value = self.escape_string(value)
             print(value, file=sys.stderr)
 
-    def subprocess(self, args, **subproc_kwargs):
+    def subprocess(self, args: str | Iterable[str], **subproc_kwargs) -> Popen:
         if self.manager:
             self.target_environ.update(self.manager.environ)
         self.adjust_env_for_platform(self.target_environ)
