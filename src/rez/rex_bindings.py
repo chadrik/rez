@@ -13,7 +13,7 @@ unnecessary data from Rex, and provide APIs that will not change.
 from __future__ import annotations
 
 from rez.rex import ActionInterpreter
-from rez.version import VersionRange
+from rez.version import VersionRange, Version, VersionToken
 from rez.version import Requirement
 
 
@@ -57,7 +57,7 @@ class VersionBinding(Binding):
         >>> v.as_tuple():
         (1, 2, '3alpha')
     """
-    def __init__(self, version) -> None:
+    def __init__(self, version: Version) -> None:
         super(VersionBinding, self).__init__()
         self.__version = version
 
@@ -86,8 +86,8 @@ class VersionBinding(Binding):
         except IndexError:
             return None
 
-    def __getitem(self, i):
-        def _convert(t):
+    def __getitem(self, i: int | slice):
+        def _convert(t: VersionToken) -> str | int:
             s = str(t)
             if s.isdigit() and (s[0] != '0' or s == '0'):
                 return int(s)

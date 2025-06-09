@@ -27,7 +27,7 @@ PackageResourceHelperT = TypeVar("PackageResourceHelperT", bound=PackageResource
 PackageFamilyResourceT = TypeVar("PackageFamilyResourceT", bound=PackageFamilyResource)
 
 
-def get_package_repository_types():
+def get_package_repository_types() -> list[str]:
     """Returns the available package repository implementations."""
     return plugin_manager.get_plugins('package_repository')
 
@@ -116,7 +116,7 @@ class PackageRepository(Generic[VariantResourceHelperT, PackageResourceHelperT, 
         self.pool.clear_caches()
 
     @cached_property
-    def uid(self) -> tuple[str, str]:
+    def uid(self) -> tuple:
         """Returns a unique identifier for this repository.
 
         This must be a persistent identifier, for example a filepath, or
@@ -435,7 +435,7 @@ class PackageRepository(Generic[VariantResourceHelperT, PackageResourceHelperT, 
         """
         return 0
 
-    def make_resource_handle(self, resource_key: str, **variables) -> ResourceHandle:
+    def make_resource_handle(self, resource_key: str, **variables: Any) -> ResourceHandle:
         """Create a `ResourceHandle`
 
         Nearly all `ResourceHandle` creation should go through here, because it
@@ -460,14 +460,14 @@ class PackageRepository(Generic[VariantResourceHelperT, PackageResourceHelperT, 
         return ResourceHandle(resource_key, variables)
 
     @overload
-    def get_resource(self, resource_key: type[ResourceT], **variables) -> ResourceT:
+    def get_resource(self, resource_key: type[ResourceT], **variables: Any) -> ResourceT:
         pass
 
     @overload
-    def get_resource(self, resource_key: str, **variables) -> Resource:
+    def get_resource(self, resource_key: str, **variables: Any) -> Resource:
         pass
 
-    def get_resource(self, resource_key: str | type[Resource], **variables) -> Resource:
+    def get_resource(self, resource_key: str | type[Resource], **variables: Any) -> Resource:
         """Get a resource.
 
         Attempts to get and return a cached version of the resource if
@@ -528,7 +528,7 @@ class PackageRepository(Generic[VariantResourceHelperT, PackageResourceHelperT, 
         """
         raise NotImplementedError
 
-    def _uid(self) -> tuple[str, str]:
+    def _uid(self) -> tuple:
         """Unique identifier implementation.
 
         You may need to provide your own implementation. For example, consider
@@ -624,7 +624,7 @@ class PackageRepositoryManager(object):
         return (repo_1.uid == repo_2.uid)
 
     def get_resource(self, resource_key: str, repository_type: str,
-                     location: str, **variables) -> Resource:
+                     location: str, **variables: Any) -> Resource:
         """Get a resource.
 
         Attempts to get and return a cached version of the resource if
@@ -671,7 +671,7 @@ class PackageRepositoryManager(object):
         self.repositories.clear()
         self.pool.clear_caches()
 
-    def _get_repository(self, path: str, **repo_args) -> PackageRepository:
+    def _get_repository(self, path: str, **repo_args: Any) -> PackageRepository:
         repo_type, location = path.split('@', 1)
         cls = plugin_manager.get_plugin_class('package_repository', repo_type, PackageRepository)
         repo = cls(location, self.pool, **repo_args)

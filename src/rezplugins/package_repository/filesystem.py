@@ -59,7 +59,7 @@ debug_print = config.debug_printer("resources")
 format_version = 2
 
 
-def check_format_version(filename, data) -> None:
+def check_format_version(filename: str, data: dict[str, Any]) -> None:
     format_version_ = data.pop("format_version", None)
 
     if format_version_ is not None:
@@ -165,7 +165,7 @@ class FileSystemPackageResource(PackageResourceHelper["FileSystemVariantResource
         return None
 
     @property
-    def base(self) -> str | None:
+    def base(self) -> str:
         # Note: '_redirected_base' is a special attribute set by the build
         # process in order to perform pre-install/release package testing. See
         # `LocalBuildProcess._run_tests()`
@@ -497,7 +497,7 @@ class FileSystemPackageRepository(
     def name(cls) -> str:
         return "filesystem"
 
-    def __init__(self, location, resource_pool, disable_memcache=None,
+    def __init__(self, location: str, resource_pool: ResourcePool, disable_memcache: bool | None = None,
                  disable_pkg_ignore: bool = False) -> None:
         """Create a filesystem package repository.
 
@@ -562,7 +562,7 @@ class FileSystemPackageRepository(
             )
             self._get_version_dirs = decorator2(self._get_version_dirs)
 
-    def _uid(self):
+    def _uid(self) -> tuple:
         t = ["filesystem", self.location]
         if os.path.exists(self.location):
             st = os.stat(self.location)
@@ -720,7 +720,7 @@ class FileSystemPackageRepository(
         else:
             return -1
 
-    def remove_package(self, pkg_name: str, pkg_version) -> bool:
+    def remove_package(self, pkg_name: str, pkg_version: Version) -> bool:
         # ignore it first, so a partially deleted pkg is not visible
         i = self.ignore_package(pkg_name, pkg_version)
         if i == -1:
@@ -980,7 +980,7 @@ class FileSystemPackageRepository(
         return repo_copy
 
     @contextmanager
-    def _lock_package(self, package_name: str, package_version: str | Version | None = None):
+    def _lock_package(self, package_name: str, package_version: str | Version | None = None) -> Iterator[None]:
         from rez.vendor.lockfile import NotLocked
 
         if _settings.file_lock_type == 'default':
@@ -1079,7 +1079,7 @@ class FileSystemPackageRepository(
 
     def _get_version_dirs(self, root: str) -> list[str]:
         # Ignore a version if there is a .ignore<version> file next to it
-        def ignore_dir(name):
+        def ignore_dir(name: str) -> bool:
             if self.disable_pkg_ignore:
                 return False
             else:
@@ -1552,5 +1552,5 @@ class FileSystemPackageRepository(
                     os.remove(tagfilepath)
 
 
-def register_plugin():
+def register_plugin() -> type[FileSystemPackageRepository]:
     return FileSystemPackageRepository

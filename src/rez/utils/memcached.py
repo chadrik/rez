@@ -39,7 +39,7 @@ class Client(object):
 
     logger = config.debug_printer("memcache")
 
-    def __init__(self, servers, debug: bool = False) -> None:
+    def __init__(self, servers: str | list[str], debug: bool = False) -> None:
         """Create a memcached client.
 
         Args:
@@ -58,7 +58,7 @@ class Client(object):
         return bool(self.servers)
 
     @property
-    def client(self):
+    def client(self) -> Client_:
         """Get the native memcache client.
 
         Returns:
@@ -68,7 +68,7 @@ class Client(object):
             self._client = Client_(self.servers)
         return self._client
 
-    def test_servers(self):
+    def test_servers(self) -> set[str]:
         """Test that memcached servers are servicing requests.
 
         Returns:
@@ -83,7 +83,7 @@ class Client(object):
                 responders.add(server)
         return responders
 
-    def set(self, key, val, time: int=0, min_compress_len: int=0) -> None:
+    def set(self, key: str, val: Any, time: int=0, min_compress_len: int=0) -> None:
         """See memcache.Client."""
         if not self.servers:
             return
@@ -98,7 +98,7 @@ class Client(object):
                         min_compress_len=min_compress_len)
         self.logger("SET: %s", key)
 
-    def get(self, key):
+    def get(self, key: str) -> Any | Client._Miss:
         """See memcache.Client.
 
         Returns:
@@ -122,7 +122,7 @@ class Client(object):
         self.logger("MISS: %s", key)
         return self.miss
 
-    def delete(self, key) -> None:
+    def delete(self, key: str) -> None:
         """See memcache.Client."""
         if self.servers:
             key = self._qualified_key(key)
@@ -149,7 +149,7 @@ class Client(object):
                 tag = "flushed" + tag
             self.current = tag
 
-    def get_stats(self):
+    def get_stats(self) -> list[tuple]:
         """Get server statistics.
 
         Returns:
@@ -167,7 +167,7 @@ class Client(object):
             self._client.disconnect_all()
         # print("Disconnected memcached client %s" % str(self))
 
-    def _qualified_key(self, key) -> str:
+    def _qualified_key(self, key: str) -> str:
         """
         Qualify cache key so that:
         * changes to schemas don't break compatibility (cache_interface_version)
@@ -181,15 +181,15 @@ class Client(object):
             key
         )
 
-    def _get_stats(self, stat_args=None):
+    def _get_stats(self, stat_args=None) -> list[tuple]:
         return self.client.get_stats(stat_args=stat_args)
 
     @classmethod
-    def _key_hash(cls, key):
+    def _key_hash(cls, key: str) -> str:
         return md5(key.encode("utf-8")).hexdigest()
 
     @classmethod
-    def _debug_key_hash(cls, key):
+    def _debug_key_hash(cls, key: str) -> str:
         import re
         h = cls._key_hash(key)[:16]
         value = "%s:%s" % (h, key)
@@ -213,7 +213,7 @@ class _ScopedInstanceManager(local):
             self.clients[key] = [client, 1]
             return client, key
 
-    def release(self, key) -> None:
+    def release(self, key: tuple[tuple, bool]) -> None:
         entry = self.clients.get(key)
         assert entry
 
@@ -405,5 +405,5 @@ def memcached(servers, key=None, from_cache=None, to_cache=None, time: int=0,
 
 
 class DoNotCache(object):
-    def __init__(self, result) -> None:
+    def __init__(self, result: Any) -> None:
         self.result = result

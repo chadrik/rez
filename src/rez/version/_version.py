@@ -10,7 +10,7 @@ from bisect import bisect_left
 import copy
 import string
 import re
-from typing import cast, Any, Callable, Generic, Iterable, TypeVar, TYPE_CHECKING
+from typing import cast, Any, Callable, Generic, Iterable, TypeVar, TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -410,7 +410,15 @@ class Version(_Comparable):
     def __len__(self) -> int:
         return len(self.tokens or [])
 
+    @overload
     def __getitem__(self, index: int) -> VersionToken:
+        pass
+
+    @overload
+    def __getitem__(self, index: slice) -> list[VersionToken]:
+        pass
+
+    def __getitem__(self, index: int | slice) -> VersionToken | list[VersionToken]:
         try:
             return (self.tokens or [])[index]
         except IndexError:
