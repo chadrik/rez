@@ -5,8 +5,13 @@
 """
 Utilities for working with dict-based schemas.
 """
+from __future__ import annotations
+
 from rez.vendor.schema.schema import Schema, Optional, Use, And
-from rez.config import Validatable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rez.config import Validatable
 
 
 # an alias which just so happens to be the same number of characters as
@@ -44,7 +49,7 @@ def schema_keys(schema) -> set[str]:
     return keys
 
 
-def dict_to_schema(schema_dict, required, allow_custom_keys: bool = True, modifier=None):
+def dict_to_schema(schema_dict, required, allow_custom_keys: bool = True, modifier=None) -> Validatable:
     """Convert a dict of Schemas into a Schema.
 
     Args:

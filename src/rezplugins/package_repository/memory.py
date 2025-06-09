@@ -14,7 +14,7 @@ from rez.utils.formatting import is_valid_package_name
 from rez.utils.resources import ResourcePool, cached_property
 from rez.version import VersionedObject
 
-from typing import Iterator, TYPE_CHECKING
+from typing import Any, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from rez.packages import VariantResource
@@ -82,7 +82,7 @@ class MemoryPackageResource(PackageResourceHelper["MemoryVariantResource"]):
             name=self.name)
         return family
 
-    def _load(self):
+    def _load(self) -> dict[str, Any]:
         family_data = self._repository.data.get(self.name, {})
         version_str = self.get("version")
         if not version_str:

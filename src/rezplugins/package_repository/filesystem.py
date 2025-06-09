@@ -183,18 +183,18 @@ class FileSystemPackageResource(PackageResourceHelper["FileSystemVariantResource
         return path
 
     @cached_property
-    def filepath(self) -> str:
+    def filepath(self) -> str | None:
         return self._filepath_and_format[0]
 
     @cached_property
-    def file_format(self):
+    def file_format(self) -> FileFormat | None:
         return self._filepath_and_format[1]
 
     @cached_property
-    def _filepath_and_format(self):
+    def _filepath_and_format(self) -> tuple[str, FileFormat] | tuple[None, None]:
         return self._repository._get_file(self.path)
 
-    def _load(self):
+    def _load(self) -> dict[str, Any]:
         if self.filepath is None:
             raise PackageDefinitionFileMissing(
                 "Missing package definition file: %r" % self)
@@ -399,7 +399,7 @@ class FileSystemCombinedPackageResource(PackageResourceHelper):
                 index=index)
             yield variant
 
-    def _load(self):
+    def _load(self) -> dict[str, Any] | None:
         data = self.parent._data.copy()
 
         if "versions" in data:

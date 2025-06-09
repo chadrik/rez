@@ -23,13 +23,13 @@ re_token = re.compile(r"[a-zA-Z0-9_]+")
 
 
 class _Comparable(_Common):
-    def __gt__(self, other: object) -> bool:
+    def __gt__(self, other: _Comparable) -> bool:
         return not (self < other or self == other)
 
-    def __le__(self, other: object) -> bool:
+    def __le__(self, other: _Comparable) -> bool:
         return self < other or self == other
 
-    def __ge__(self, other: object) -> bool:
+    def __ge__(self, other: _Comparable) -> bool:
         return not self < other
 
 
@@ -703,7 +703,7 @@ class _VersionRangeParser(object):
 
     def __init__(self, input_string: str, make_token: Callable[[str], VersionToken], invalid_bound_error: bool = True) -> None:
         self.make_token = make_token
-        self._groups = {}
+        self._groups: dict[str, Any | None] = {}
         self._input_string = input_string
         self.bounds = []
         self.invalid_bound_error = invalid_bound_error
@@ -754,13 +754,13 @@ class _VersionRangeParser(object):
             elif self._groups['upper_bound']:
                 self._act_upper_bound()
 
-    def _is_lower_bound_exclusive(self, token: str) -> bool:
+    def _is_lower_bound_exclusive(self, token: str | None) -> bool:
         return (token == ">")
 
-    def _is_upper_bound_exclusive(self, token: str) -> bool:
+    def _is_upper_bound_exclusive(self, token: str | None) -> bool:
         return (token == "<")
 
-    def _create_version_from_token(self, token: str) -> Version:
+    def _create_version_from_token(self, token: str | None) -> Version:
         return Version(token, make_token=self.make_token)
 
     @action

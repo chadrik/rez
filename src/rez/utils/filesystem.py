@@ -475,7 +475,7 @@ def copytree(src: str, dst: str, symlinks: bool = False, ignore=None, hardlinks:
         raise shutil.Error(errors)
 
 
-def movetree(src, dst) -> None:
+def movetree(src: str, dst: str) -> None:
     """Attempts a move, and falls back to a copy+delete if this fails
     """
     try:
@@ -485,27 +485,27 @@ def movetree(src, dst) -> None:
         shutil.rmtree(src)
 
 
-def safe_chmod(path, mode) -> None:
+def safe_chmod(path: str, mode) -> None:
     """Set the permissions mode on path, but only if it differs from the current mode.
     """
     if stat.S_IMODE(os.stat(path).st_mode) != mode:
         os.chmod(path, mode)
 
 
-def to_nativepath(path):
+def to_nativepath(path: str):
     path = path.replace('\\', '/')
     return os.path.join(*path.split('/'))
 
 
-def to_ntpath(path):
+def to_ntpath(path: str):
     return ntpath.sep.join(path.split(posixpath.sep))
 
 
-def to_posixpath(path):
+def to_posixpath(path: str):
     return posixpath.sep.join(path.split(ntpath.sep))
 
 
-def canonical_path(path, platform=None):
+def canonical_path(path: str, platform=None):
     r""" Resolves symlinks, and formats filepath.
 
     Resolves symlinks, lowercases if filesystem is case-insensitive,
@@ -530,7 +530,7 @@ def canonical_path(path, platform=None):
     return path
 
 
-def encode_filesystem_name(input_str):
+def encode_filesystem_name(input_str: str):
     """Encodes an arbitrary unicode string to a generic filesystem-compatible
     non-unicode filename.
 
@@ -602,7 +602,7 @@ _FILESYSTEM_TOKEN_RE = re.compile(r'(?P<as_is>[a-z0-9.-])|(?P<underscore>__)|_(?
 _HEX_RE = re.compile('[0-9a-f]+$')
 
 
-def decode_filesystem_name(filename):
+def decode_filesystem_name(filename: str):
     """Decodes a filename encoded using the rules given in encode_filesystem_name
     to a unicode string.
     """
@@ -671,7 +671,7 @@ def test_encode_decode() -> None:
     do_test(u"\u20ac3 ~= $4.06", '_3e282ac3_020_07e_03d_020_0244.06')
 
 
-def walk_up_dirs(path):
+def walk_up_dirs(path: str):
     """Yields absolute directories starting with the given path, and iterating
     up through all it's parents, until it reaches a root directory"""
     prev_path = None
@@ -682,7 +682,7 @@ def walk_up_dirs(path):
         current_path = os.path.dirname(prev_path)
 
 
-def windows_long_path(dos_path):
+def windows_long_path(dos_path: str):
     """Prefix '\\?\' for path longer than 259 char (Win32API limitation)
     """
     path = os.path.abspath(dos_path)
@@ -697,7 +697,7 @@ def windows_long_path(dos_path):
     return path
 
 
-def rename(src, dst):
+def rename(src: str, dst: str):
     """Utility function to rename a file or folder src to dst with retrying.
 
     This function uses the built-in `os.rename()` function and falls back to `robocopy` tool
